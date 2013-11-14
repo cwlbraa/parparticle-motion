@@ -9,7 +9,7 @@ Interfaces:
     Input:
         -> openCV video codec to XXX
     Input to Emission Model:
-        -> hashmap<position, probability>
+        -> std::map<position, probability>
 
 
     Particle filter to Video Output:
