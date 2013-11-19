@@ -8,7 +8,7 @@ int main(int argc, char** argv)
 
     //initialize particles based on input dimensions
 
-    while (video not over) {
+    while (video not over) { // can we make this run live on a webcam?
         //open evidenceFrame
         //generate emission model : P(evidenceFrame|each location)
         //observe and resample using emissionmodel
