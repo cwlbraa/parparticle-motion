@@ -1,8 +1,3 @@
-/* Particle Filter implemented by storing particles in a long array corresponding
- * to the pixels (row-major 2D matrix stored as array). Entries correspond to the
- * number of particles present in the pixel.
- */
-
 #include <map>
 #include <tuple>
 #include <time.h>
@@ -68,7 +63,7 @@ void elapseTime(std::tuple<int, int> *oldParticles, int numParticles, int width,
 }
 
 
-void parFilterMatrix(int height, int width, int* particles, std::map<std::tuple<int, int>, double> &edistr){
+void parFilterMatrix(int* particles, std::map<std::tuple<int, int>, double> &edistr, int width, int height){
 	/*int numParticles = height*width/4;
 	int particles[numParticles] = {0};
 	initializeUniformly(numParticles, particles);
