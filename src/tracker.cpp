@@ -188,16 +188,16 @@ void track_video(string video_location, string reference_location) {
         //cout << numParticles << " particles is " << timetaken << "s." << endl;
 
         tuple<int, int, int, int>* particles = pf.particleList();
-        /*for (int i = 0; i < numParticles; i++) {
-            circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 3, Scalar(0, 0, 255), -1, 8);
-        }*/
+        for (int i = 0; i < numParticles; i++) {
+            circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 2, Scalar(0, 0, 255), -1, 8);
+        }
 
 		//test bestGuess
 		std::tuple<int,int> best = pf.bestGuess();
-		std::cout << "Best guess: ";
-		std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
+		//std::cout << "Best guess: ";
+		//std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
 
-		//circle(frame, Point(get<0>(best), get<1>(best)), 5, Scalar(0, 255, 0), -1, 8);
+		circle(frame, Point(get<0>(best), get<1>(best)), 2, Scalar(0, 255, 0), -1, 8);
         drawOverlay(frame, reference, best);
 
         imshow("Video Tracker", frame);
@@ -206,7 +206,11 @@ void track_video(string video_location, string reference_location) {
             break;
 
 		video >> frame;
+
+		if (frame.empty())
+			break;
 		cvtColor(frame, frame_hsv, CV_RGB2HSV);
+		
     }
 
 	pf.destroy();

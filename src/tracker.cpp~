@@ -20,8 +20,8 @@ float hue_range[] = {0, 256};
 float saturation_range[] = {0, 180};
 const float* ranges[] = {hue_range, saturation_range};
 bool verbose = false;
-int numParticles = 200;
-double sigma = 10.0;
+int numParticles = 500;
+double sigma = 12.0;
 
 using namespace std;
 using namespace cv;
@@ -136,6 +136,15 @@ void track_image(std::string source_location, std::string reference_location) {
 	
 }
 
+void drawOverlay(Mat& frame, Mat& reference, std::tuple<int, int> bestGuess) {
+    int refWidth = reference.size().width;
+    int refHeight = reference.size().width;
+    Point vertex1 = Point(get<0>(bestGuess) - int(refWidth/2), get<1>(bestGuess) - int(refHeight/2));
+    Point vertex2 = Point(get<0>(bestGuess) + int(refWidth/2), get<1>(bestGuess) + int(refHeight/2));
+
+    rectangle(frame, vertex1, vertex2, Scalar(255, 255, 255), 3, 8, 0);
+}
+
 // video file: type=1, webcam: type=0
 void track_video(string video_location, string reference_location) {
     Mat frame,
@@ -146,7 +155,6 @@ void track_video(string video_location, string reference_location) {
 	reference = imread(reference_location, CV_LOAD_IMAGE_COLOR);
 
     if (!reference.data) {
-
         cout << "Could not load an image file" << endl;
         return;
     }
@@ -181,15 +189,16 @@ void track_video(string video_location, string reference_location) {
 
         tuple<int, int, int, int>* particles = pf.particleList();
         for (int i = 0; i < numParticles; i++) {
-            circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 3, Scalar(0, 0, 255), -1, 8);
+            circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 2, Scalar(0, 0, 255), -1, 8);
         }
 
 		//test bestGuess
 		std::tuple<int,int> best = pf.bestGuess();
-		std::cout << "Best guess: ";
-		std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
+		//std::cout << "Best guess: ";
+		//std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
 
-		circle(frame, Point(get<0>(best), get<1>(best)), 5, Scalar(0, 255, 0), -1, 8);
+		circle(frame, Point(get<0>(best), get<1>(best)), 2, Scalar(0, 255, 0), -1, 8);
+        drawOverlay(frame, reference, best);
 
         imshow("Video Tracker", frame);
 
@@ -197,7 +206,11 @@ void track_video(string video_location, string reference_location) {
             break;
 
 		video >> frame;
+
+		if (frame.empty())
+			break;
 		cvtColor(frame, frame_hsv, CV_RGB2HSV);
+		
     }
 
 	pf.destroy();
