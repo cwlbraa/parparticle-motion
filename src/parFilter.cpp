@@ -9,6 +9,7 @@
 #include <sys/time.h>
 #include <trng/yarn5.hpp>
 #include <trng/discrete_dist.hpp>
+#include <trng/normal_dist.hpp>
 #include <trng/truncated_normal_dist.hpp>
 #include <getopt.h>
 
@@ -16,11 +17,12 @@
 #include "ImageHelper.hpp"
 
 void ParticleFilter::initializeUniformly(){
-    int x,y;
+    int x,y,dx,dy;
     srand(time(NULL));
     for (int i = 0; i < numParticles; i++){
         x = (int) (rand() % width);
         y = (int) (rand() % height);
+
         particles[i] = std::make_tuple(x,y,0,0); //initialize velocities to zero
     }
 }
@@ -36,9 +38,10 @@ void ParticleFilter::telapse(std::tuple<int,int,int,int> *oldParticle) {
     //init distributions
     trng::truncated_normal_dist<> X(std::max(std::min(x+dx,width),0), sigma, 0, (float) width - 1);
     trng::truncated_normal_dist<> Y(std::max(std::min(y+dy,height),0), sigma, 0, (float) height - 1);
-
+    trng::normal_dist<> dX(dx, 3);
+    trng::normal_dist<> dY(dy, 3);
     //replace old particle
-    *oldParticle = std::make_tuple((int) X(r), (int) Y(r), dx, dy);
+    *oldParticle = std::make_tuple((int) X(r), (int) Y(r), (int) dX(r), (int) dY(r));
 }
 
 void ParticleFilter::observe(){
@@ -130,24 +133,25 @@ std::tuple<int,int> ParticleFilter::bestGuess(){
 
 void ParticleFilter::printFirstN(int n) {
     for (int i = 0; i < n; i++) {
-        std::cout << "particles[" << i << "]: ";
-        std::cout << std::get<0>(particles[i]) << ", " << std::get<1>(particles[i]);
-        std::cout << std::endl;
+        ParticleFilter::printParticleN(i);
     }
 }
 
 void ParticleFilter::printParticleN(int n){
     std::cout << "particles[" << n << "]: ";
     std::cout << std::get<0>(particles[n]) << ", " << std::get<1>(particles[n]);
-    std::cout << std::endl;
+    std::cout << " v: " << std::get<2>(particles[n]) << ", " << std::get<3>(particles[n]) << std::endl;
 }
 
 void ParticleFilter::parFilterIterate(){
     /* Does one iteration of particle filter: elapse time, then observe */
     
+    std::cout << "before time: " << std::endl;
+    ParticleFilter::printFirstN(5);
     for(int i = 0; i < numParticles; i++){
         telapse(&particles[i]);
     }
+    std::cout << "before observe: " << std::endl;
 
     observe();
 }
