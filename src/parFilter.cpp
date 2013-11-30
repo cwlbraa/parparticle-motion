@@ -34,8 +34,8 @@ void ParticleFilter::telapse(std::tuple<int,int,int,int> *oldParticle) {
     std::tie(x, y, dx, dy) = *oldParticle;
 
     //init distributions
-    trng::truncated_normal_dist<> X(std::max(std::min(x,width),0), sigma, 0, (float) width - 1);
-    trng::truncated_normal_dist<> Y(std::max(std::min(y,height),0), sigma, 0, (float) height - 1);
+    trng::truncated_normal_dist<> X(std::max(std::min(x+dx,width),0), sigma, 0, (float) width - 1);
+    trng::truncated_normal_dist<> Y(std::max(std::min(y+dy,height),0), sigma, 0, (float) height - 1);
 
     //replace old particle
     *oldParticle = std::make_tuple((int) X(r), (int) Y(r), dx, dy);
@@ -45,14 +45,14 @@ void ParticleFilter::observe(){
 	/* Uses edistr matrix to weight particles, then resamples using discrete
      * distribution according to (#particles * weight). If total weight is
      * zero, the particles are uniformly distributed */
-    std::map<std::tuple<int, int>, double> beliefs;
+    std::map<std::tuple<int, int, int, int>, double> beliefs;
     std::tuple<int,int,int,int> t;
     double frameGivenPos, total;
 
     for(int i = 0; i < numParticles; i++){
         t = particles[i];
         frameGivenPos = imageHelper->similarity(std::get<0>(t), std::get<1>(t));
-        beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += frameGivenPos;
+        beliefs[t] += frameGivenPos;
         total += frameGivenPos;
     }
 
@@ -62,14 +62,14 @@ void ParticleFilter::observe(){
         initializeUniformly();
         for(int i = 0; i < numParticles; i++){
             t = particles[i];
-            beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += 1;
+            beliefs[t] += 1;
         }
         total = numParticles;
     }
 
     int size = (int)beliefs.size();
     std::vector<double> p;  // stores relative probabilities
-    std::tuple<int,int> *locations = new std::tuple<int,int>[size];
+    std::tuple<int,int,int,int> *locations = new std::tuple<int,int,int,int>[size];
    
     // populate vector with relative probabilities and keep track of particle locations
     int i = 0;
@@ -86,19 +86,13 @@ void ParticleFilter::observe(){
     // random generator
     trng::yarn5 r;
 
-    std::tuple<int, int> newPos;
-    std::tuple<int, int, int, int> oldParticle;
+    std::tuple<int, int, int, int> newPos;
 
     // resample
     for(int a = 0; a < numParticles; a++){          	
-        newPos = locations[dist(r)];
-    	oldParticle = particles[a];
 
     	// positions of newPos, dx = newPos(x) - oldParticle(x), etc.
-        particles[a] = std::make_tuple(std::get<0>(newPos), 
-                                    std::get<1>(newPos), 
-                                    std::get<0>(newPos)-std::get<0>(oldParticle), 
-                                    std::get<1>(newPos)-std::get<1>(oldParticle));
+        particles[a] = locations[dist(r)];
     }
 
     delete[] locations;
