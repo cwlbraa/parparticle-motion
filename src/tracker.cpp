@@ -23,7 +23,7 @@ double totalTime;
 int numIterations;
 
 // Arguments for comparing histograms
-int hist_size[] = {16, 16}; // corresponds to {hue_bins, saturation_bins}
+int hist_size[] = {32, 30}; // corresponds to {hue_bins, saturation_bins}
 int channels[] = {0, 1};
 float hue_range[] = {0, 256};
 float saturation_range[] = {0, 180};
@@ -31,7 +31,7 @@ const float* ranges[] = {hue_range, saturation_range};
 
 // Arguments for the the particle filter
 bool verbose = false;
-int numParticles = 600;
+int numParticles = 1000;
 double sigma = 20.0;
 
 double bhattacharyya_distance(MatND& src, MatND& ref) {
@@ -246,17 +246,15 @@ void track_video(string video_location, string reference_location) {
 		//std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
 
 		circle(frame, Point(get<0>(best), get<1>(best)), 2, Scalar(0, 255, 0), -1, 8);
-        drawOverlay(frame, reference, best);
-
+        //drawOverlay(frame, reference, best);
+        
         imshow("Video Tracker", frame);
+        waitKey(1);
 
         #if TIME
             gettimeofday(&tv, 0);
             timer.timeToDrawStuff += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
         #endif
-
-        if (waitKey(30) >= 0)
-            break;
 
         #if TIME
             gettimeofday(&temp, 0);
@@ -269,8 +267,13 @@ void track_video(string video_location, string reference_location) {
             timer.timeToLoadFrame += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
         #endif
 
-		if (frame.empty())
-			break;
+		if (frame.empty()) {
+            #if FPS
+                gettimeofday(&time_stop, 0);
+                totalTime = time_stop.tv_sec + 1e-6*time_stop.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
+            #endif
+            break;
+        }
 
         #if TIME
             gettimeofday(&temp, 0);
@@ -312,8 +315,6 @@ void track_video(string video_location, string reference_location) {
     #endif
 
     #if FPS
-        gettimeofday(&time_stop, 0);
-        totalTime = time_stop.tv_sec + 1e-6*time_stop.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
         cout << "Average FPS: " << numIterations / totalTime << endl;
     #endif
 

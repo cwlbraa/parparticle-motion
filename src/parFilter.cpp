@@ -48,25 +48,21 @@ void ParticleFilter::observe(){
      * distribution according to (#particles * weight). If total weight is
      * zero, the particles are uniformly distributed */   // stores relative probabilities indexed by particle number
     //std::map<std::tuple<int, int>, double> beliefs;
-    std::tuple<int,int> t;
     double frameGivenPos, total = 0;
     #if TIME
         timeval start, end, end1;
         gettimeofday(&start, 0);
     #endif
 
-
-    omp_set_num_threads(2);
-    #pragma omp parallel
-    {
-    #pragma omp for
-    for(int i = 0; i < numParticles; i++){
-        t = particles[i];
-        frameGivenPos = imageHelper->similarity(std::get<0>(t), std::get<1>(t));
-        probs[i] = frameGivenPos;
-        //beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += frameGivenPos;
-        total += frameGivenPos;
-    }
+    #pragma omp parallel for
+    for(int i = 0; i < numParticles; i+=125) {
+        for (int j = i; j < i + 125; j++) {
+            std::tuple<int,int> t = particles[j];
+            frameGivenPos = imageHelper->similarity(std::get<0>(t), std::get<1>(t));
+            probs[j] = frameGivenPos;
+            //beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += frameGivenPos;
+            total += frameGivenPos;
+        }
     }
 
     #if TIME
@@ -79,7 +75,7 @@ void ParticleFilter::observe(){
         if(verbose){std::cout << "Reinitializing..." << std::endl;};
         initializeUniformly();
         for(int i = 0; i < numParticles; i++){
-            t = particles[i];
+            std::tuple<int,int> t = particles[i];
             probs[i] = 1;
             //beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += 1;
         }
@@ -191,7 +187,7 @@ void ParticleFilter::parFilterIterate(){
     #endif
 
     #if TIME
-            gettimeofday(&start, 0);
+        gettimeofday(&start, 0);
     #endif
 
     observe();
