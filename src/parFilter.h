@@ -5,27 +5,27 @@
 #include <trng/yarn5.hpp>
 
 //Map iterator type
-typedef std::map<std::tuple<int,int,int,int>, double>::iterator it_type;
+typedef std::map<std::tuple<int,int>, double>::iterator it_type;
 
 class ParticleFilter {
         ImageHelper* imageHelper;
         bool verbose;
         int width, height, numParticles, numIter;
         double sigma;
-        std::tuple<int, int, int, int> *particles;
+        std::tuple<int, int> *particles;
         std::tuple<int,int> dims;
         trng::yarn5 r;
 
         void initializeUniformly();
 
-        void telapse(std::tuple<int,int,int,int> *oldParticle);
+        void telapse(std::tuple<int,int> *oldParticle);
 
         void observe();
 
     public:
         ParticleFilter (int np, double sig, bool verb, ImageHelper& imageHelper);
 
-        std::tuple<int,int,int,int>* particleList(){ return particles; }
+        std::tuple<int,int>* particleList(){ return particles; }
 
         std::tuple<int,int> bestGuess();
 

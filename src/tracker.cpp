@@ -120,7 +120,7 @@ void track_image(std::string source_location, std::string reference_location) {
         //std::cout << "Time taken for " << numIter << " iterations with ";
         //cout << numParticles << " particles is " << timetaken << "s." << endl;
 
-        tuple<int, int, int, int>* particles = pf.particleList();
+        tuple<int, int>* particles = pf.particleList();
         for (int i = 0; i < numParticles; i++) {
             circle(source, Point(get<0>(particles[i]), get<1>(particles[i])), 3, Scalar(0, 0, 255), -1, 8);
         }
@@ -237,7 +237,7 @@ void track_video(string video_location, string reference_location) {
             gettimeofday(&temp, 0);
         #endif
 
-        tuple<int, int, int, int>* particles = pf.particleList();
+        tuple<int, int>* particles = pf.particleList();
         for (int i = 0; i < numParticles; i++) {
             circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 2, Scalar(0, 0, 255), -1, 8);
         }

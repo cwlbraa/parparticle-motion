@@ -23,24 +23,24 @@ void ParticleFilter::initializeUniformly(){
     for (int i = 0; i < numParticles; i++){
         x = (int) (rand() % width);
         y = (int) (rand() % height);
-        particles[i] = std::make_tuple(x,y,0,0); //initialize velocities to zero
+        particles[i] = std::make_tuple(x,y); //initialize velocities to zero
     }
 }
 
-void ParticleFilter::telapse(std::tuple<int,int,int,int> *oldParticle) {
+void ParticleFilter::telapse(std::tuple<int,int> *oldParticle) {
     /* given an old particle, the dimensions of the frame, and the std deviation,
     returns a new particle sampled from a 2D truncated normal distribution. */ 
 
     //init and unpack variables
-    int x, y, dx, dy;
-    std::tie(x, y, dx, dy) = *oldParticle;
+    int x, y;
+    std::tie(x, y) = *oldParticle;
 
     //init distributions
     trng::truncated_normal_dist<> X(std::max(std::min(x,width),0), sigma, 0, (float) width - 1);
     trng::truncated_normal_dist<> Y(std::max(std::min(y,height),0), sigma, 0, (float) height - 1);
 
     //replace old particle
-    *oldParticle = std::make_tuple((int) X(r), (int) Y(r), dx, dy);
+    *oldParticle = std::make_tuple((int) X(r), (int) Y(r));
 }
 
 void ParticleFilter::observe(){
@@ -48,7 +48,7 @@ void ParticleFilter::observe(){
      * distribution according to (#particles * weight). If total weight is
      * zero, the particles are uniformly distributed */
     std::map<std::tuple<int, int>, double> beliefs;
-    std::tuple<int,int,int,int> t;
+    std::tuple<int,int> t;
     double frameGivenPos, total;
 
     #if TIME
@@ -99,7 +99,7 @@ void ParticleFilter::observe(){
     trng::yarn5 r;
 
     std::tuple<int, int> newPos;
-    std::tuple<int, int, int, int> oldParticle;
+    std::tuple<int, int> oldParticle;
 
     // resample
     for(int a = 0; a < numParticles; a++){          	
@@ -108,9 +108,7 @@ void ParticleFilter::observe(){
 
     	// positions of newPos, dx = newPos(x) - oldParticle(x), etc.
         particles[a] = std::make_tuple(std::get<0>(newPos), 
-                                    std::get<1>(newPos), 
-                                    std::get<0>(newPos)-std::get<0>(oldParticle), 
-                                    std::get<1>(newPos)-std::get<1>(oldParticle));
+                                    std::get<1>(newPos));
     }
 
     delete[] locations;
@@ -131,7 +129,7 @@ ParticleFilter::ParticleFilter (int np, double sig, bool verb, ImageHelper& _ima
     r.seed(std::rand());  
 
     if(verb){std::cout << "Initializing particles..." << std::endl;}
-    particles = new std::tuple<int, int, int, int>[numParticles];
+    particles = new std::tuple<int, int>[numParticles];
     ParticleFilter::initializeUniformly();
 }
 
