@@ -5,7 +5,7 @@
 #include <trng/yarn5.hpp>
 
 //Map iterator type
-typedef std::map<std::tuple<int,int>, double>::iterator it_type;
+typedef std::map<std::tuple<int,int,int,int>, double>::iterator it_type;
 
 class ParticleFilter {
         ImageHelper* imageHelper;
