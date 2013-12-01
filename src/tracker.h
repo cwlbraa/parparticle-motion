@@ -1,8 +1,8 @@
 #include <sys/time.h>  
 #include <stdio.h>
 
-#define TIME false
-#define DEBUG false
+#define TIME true
+#define DEBUG true
 #define FPS false
 
 struct Timer {
@@ -10,6 +10,7 @@ struct Timer {
     double timeToConvertColor;
     double timeToComputeDistances;
     double timeToElapseTime;
+    double timetoResample;
     double timeToObserve;
     double timeToLoadFrame;
     double timeToDrawStuff;

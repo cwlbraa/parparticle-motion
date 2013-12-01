@@ -31,8 +31,8 @@ const float* ranges[] = {hue_range, saturation_range};
 
 // Arguments for the the particle filter
 bool verbose = false;
-int numParticles = 200;
-double sigma = 12.0;
+int numParticles = 600;
+double sigma = 20.0;
 
 double bhattacharyya_distance(MatND& src, MatND& ref) {
     return 1.0 - compareHist(src, ref, 3);
@@ -111,9 +111,7 @@ void track_image(std::string source_location, std::string reference_location) {
         //double timetaken;
         //gettimeofday(&time_start, 0); 
 
-		for(int i = 0; i < 5; i++){
-        	pf.parFilterIterate();
-		}
+        pf.parFilterIterate();
 
         //gettimeofday(&time_end, 0);
         //timetaken = time_end.tv_sec + 1e-6*time_end.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
@@ -308,6 +306,7 @@ void track_video(string video_location, string reference_location) {
         cout << "\tAverage time to iterate particle filter: " << timeToPFIterate << "s" << endl;
         cout << "\t\tAverage time to observe: " << timer.timeToObserve / timer.numIterations << "s" << endl;
         cout << "\t\t\tAverage time to compute distances: " << timer.timeToComputeDistances / timer.numIterations << "s" << endl;
+        cout << "\t\t\tAverage time to resample: " << timer.timetoResample / timer.numIterations << "s" << endl;
         cout << "\t\tAverage time to elapse time: " << timer.timeToElapseTime / timer.numIterations << "s" << endl;
         cout << "\tAverage time to draw stuff: " << timeToDrawStuff << "s" << endl;
     #endif
