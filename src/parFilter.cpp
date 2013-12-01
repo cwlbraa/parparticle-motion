@@ -36,8 +36,8 @@ void ParticleFilter::telapse(std::tuple<int,int> *oldParticle) {
     std::tie(x, y) = *oldParticle;
 
     //init distributions
-    trng::truncated_normal_dist<> X(std::max(std::min(x,width),0), sigma, 0, (float) width - 1);
-    trng::truncated_normal_dist<> Y(std::max(std::min(y,height),0), sigma, 0, (float) height - 1);
+    trng::truncated_normal_dist<> X(x, sigma, 0, (float) width - 1);
+    trng::truncated_normal_dist<> Y(y, sigma, 0, (float) height - 1);
 
     //replace old particle
     *oldParticle = std::make_tuple((int) X(r), (int) Y(r));
