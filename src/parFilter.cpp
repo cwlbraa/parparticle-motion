@@ -11,7 +11,9 @@
 #include <trng/discrete_dist.hpp>
 #include <trng/truncated_normal_dist.hpp>
 #include <getopt.h>
+#include <omp.h>
 
+#include "tracker.h"
 #include "parFilter.h"
 #include "ImageHelper.hpp"
 
@@ -49,12 +51,22 @@ void ParticleFilter::observe(){
     std::tuple<int,int,int,int> t;
     double frameGivenPos, total;
 
+    #if TIME
+        timeval start, end;
+        gettimeofday(&start, 0);
+    #endif
+
     for(int i = 0; i < numParticles; i++){
         t = particles[i];
         frameGivenPos = imageHelper->similarity(std::get<0>(t), std::get<1>(t));
         beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += frameGivenPos;
         total += frameGivenPos;
     }
+
+    #if TIME
+        gettimeofday(&end, 0);
+        timer.timeToComputeDistances += end.tv_sec + 1e-6*end.tv_usec - start.tv_sec - 1e-6*start.tv_usec;
+    #endif
 
     // If all the weights are zero (i.e. no location fulfills evidence)
     if(total == 0){
@@ -151,11 +163,30 @@ void ParticleFilter::printParticleN(int n){
 void ParticleFilter::parFilterIterate(){
     /* Does one iteration of particle filter: elapse time, then observe */
     
+    #if TIME
+        timeval start, end;
+        gettimeofday(&start, 0);
+    #endif
+
     for(int i = 0; i < numParticles; i++){
         telapse(&particles[i]);
     }
 
+    #if TIME
+        gettimeofday(&end, 0);
+        timer.timeToElapseTime += end.tv_sec + 1e-6*end.tv_usec - start.tv_sec - 1e-6*start.tv_usec;
+    #endif
+
+    #if TIME
+            gettimeofday(&start, 0);
+    #endif
+
     observe();
+
+    #if TIME
+        gettimeofday(&end, 0);
+        timer.timeToObserve += end.tv_sec + 1e-6*end.tv_usec - start.tv_sec - 1e-6*start.tv_usec;
+    #endif
 }
 
 void ParticleFilter::printParams(){

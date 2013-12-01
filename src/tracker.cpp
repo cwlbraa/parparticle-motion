@@ -11,20 +11,28 @@
 
 #include "parFilter.h"
 #include "ImageHelper.hpp"
+#include "tracker.h"
 
-#define DEBUG false
+using namespace std;
+using namespace cv;
 
-int hist_size[] = {32, 30}; // corresponds to {hue_bins, saturation_bins}
+// Evil variables
+Timer timer;
+timeval time_start, time_stop;
+double totalTime;
+int numIterations;
+
+// Arguments for comparing histograms
+int hist_size[] = {16, 16}; // corresponds to {hue_bins, saturation_bins}
 int channels[] = {0, 1};
 float hue_range[] = {0, 256};
 float saturation_range[] = {0, 180};
 const float* ranges[] = {hue_range, saturation_range};
+
+// Arguments for the the particle filter
 bool verbose = false;
 int numParticles = 200;
 double sigma = 12.0;
-
-using namespace std;
-using namespace cv;
 
 double bhattacharyya_distance(MatND& src, MatND& ref) {
     return 1.0 - compareHist(src, ref, 3);
@@ -166,26 +174,68 @@ void track_video(string video_location, string reference_location) {
 
     namedWindow("Video Tracker", CV_WINDOW_AUTOSIZE);
 
+    #if TIME
+        timeval temp, tv;
+        gettimeofday(&temp, 0);;
+    #endif
+
 	video >> frame;
+
+    #if TIME
+            gettimeofday(&tv, 0);
+            timer.timeToLoadFrame += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
+    #endif
+
 	cvtColor(frame, frame_hsv, CV_RGB2HSV);
 
 	ImageHelper imageHelper(frame_hsv, reference_hsv, hist_size, ranges, channels);
     ParticleFilter pf(numParticles, sigma, verbose, imageHelper);
     pf.printParams();
 
-    while (true) {
-        //struct timeval time_start, time_end;
-        //double timetaken;
-        //gettimeofday(&time_start, 0); 
+    #if TIME
+        timer.numIterations = 0;
+        gettimeofday(&tv, 0);
+        timer.start = tv.tv_sec + 1e-6*tv.tv_usec;
+    #endif
 
-		for(int i = 0; i < 5; i++){
-        	pf.parFilterIterate();
-		}
+    #if FPS
+        gettimeofday(&time_start, 0);
+        numIterations = 0;
+    #endif
+
+    while (true) {
+        #if FPS
+            numIterations++;
+        #endif
+
+        #if TIME
+            timeval start, end;
+            gettimeofday(&start, 0);
+        #endif
+
+        #if TIME
+            timer.numIterations += 1;
+        #endif
+
+        #if TIME
+            gettimeofday(&temp, 0);
+        #endif
+
+        pf.parFilterIterate();
+
+        #if TIME
+            gettimeofday(&tv, 0);
+            timer.timeToPFIterate += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
+        #endif
 
         //gettimeofday(&time_end, 0);
         //timetaken = time_end.tv_sec + 1e-6*time_end.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
         //std::cout << "Time taken for " << numIter << " iterations with ";
         //cout << numParticles << " particles is " << timetaken << "s." << endl;
+
+        #if TIME
+            gettimeofday(&temp, 0);
+        #endif
 
         tuple<int, int, int, int>* particles = pf.particleList();
         for (int i = 0; i < numParticles; i++) {
@@ -202,16 +252,71 @@ void track_video(string video_location, string reference_location) {
 
         imshow("Video Tracker", frame);
 
+        #if TIME
+            gettimeofday(&tv, 0);
+            timer.timeToDrawStuff += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
+        #endif
+
         if (waitKey(30) >= 0)
             break;
 
+        #if TIME
+            gettimeofday(&temp, 0);
+        #endif
+
 		video >> frame;
+
+        #if TIME
+            gettimeofday(&tv, 0);
+            timer.timeToLoadFrame += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
+        #endif
 
 		if (frame.empty())
 			break;
+
+        #if TIME
+            gettimeofday(&temp, 0);
+        #endif
+
 		cvtColor(frame, frame_hsv, CV_RGB2HSV);
-		
+
+        #if TIME
+            gettimeofday(&tv, 0);
+            timer.timeToConvertColor += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
+        #endif
+
+        #if TIME
+            gettimeofday(&end, 0);
+            timer.timePerFrame += end.tv_sec + 1e-6*end.tv_usec - start.tv_sec - 1e-6*start.tv_usec;
+        #endif
     }
+
+    #if TIME
+        gettimeofday(&tv, 0);
+        timer.end = tv.tv_sec + 1e-6*tv.tv_usec;
+
+        double timeToLoadFrame = timer.timeToLoadFrame / timer.numIterations;
+        double timeToConvertColor = timer.timeToConvertColor / timer.numIterations;
+        double timeToPFIterate = timer.timeToPFIterate / timer.numIterations;
+        double timeToDrawStuff = timer.timeToDrawStuff / timer.numIterations;
+        double timePerFrame = timeToLoadFrame + timeToConvertColor + timeToPFIterate + timeToDrawStuff;
+
+        cout << endl;
+        cout << "Average time per frame: " << timePerFrame << "s" << endl;
+        cout << "\tAverage time to load frame: " << timeToLoadFrame << "s" << endl;
+        cout << "\tAverage time to convert color: " << timeToConvertColor << "s" << endl;
+        cout << "\tAverage time to iterate particle filter: " << timeToPFIterate << "s" << endl;
+        cout << "\t\tAverage time to observe: " << timer.timeToObserve / timer.numIterations << "s" << endl;
+        cout << "\t\t\tAverage time to compute distances: " << timer.timeToComputeDistances / timer.numIterations << "s" << endl;
+        cout << "\t\tAverage time to elapse time: " << timer.timeToElapseTime / timer.numIterations << "s" << endl;
+        cout << "\tAverage time to draw stuff: " << timeToDrawStuff << "s" << endl;
+    #endif
+
+    #if FPS
+        gettimeofday(&time_stop, 0);
+        totalTime = time_stop.tv_sec + 1e-6*time_stop.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
+        cout << "Average FPS: " << numIterations / totalTime << endl;
+    #endif
 
 	pf.destroy();
 }
