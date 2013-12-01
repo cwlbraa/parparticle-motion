@@ -5,7 +5,7 @@
 #include <trng/yarn5.hpp>
 
 //Map iterator type
-typedef std::map<std::tuple<int,int>, double>::iterator it_type;
+//typedef std::map<std::tuple<int,int>, double>::iterator it_type;
 
 class ParticleFilter {
         ImageHelper* imageHelper;
@@ -13,6 +13,7 @@ class ParticleFilter {
         int width, height, numParticles, numIter;
         double sigma;
         std::tuple<int, int> *particles;
+        double *probs;
         std::tuple<int,int> dims;
         trng::yarn5 r;
 

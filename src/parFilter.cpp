@@ -46,21 +46,27 @@ void ParticleFilter::telapse(std::tuple<int,int> *oldParticle) {
 void ParticleFilter::observe(){
 	/* Uses edistr matrix to weight particles, then resamples using discrete
      * distribution according to (#particles * weight). If total weight is
-     * zero, the particles are uniformly distributed */
-    std::map<std::tuple<int, int>, double> beliefs;
+     * zero, the particles are uniformly distributed */   // stores relative probabilities indexed by particle number
+    //std::map<std::tuple<int, int>, double> beliefs;
     std::tuple<int,int> t;
-    double frameGivenPos, total;
-
+    double frameGivenPos, total = 0;
     #if TIME
-        timeval start, end;
+        timeval start, end, end1;
         gettimeofday(&start, 0);
     #endif
 
+
+    omp_set_num_threads(2);
+    #pragma omp parallel
+    {
+    #pragma omp for
     for(int i = 0; i < numParticles; i++){
         t = particles[i];
         frameGivenPos = imageHelper->similarity(std::get<0>(t), std::get<1>(t));
-        beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += frameGivenPos;
+        probs[i] = frameGivenPos;
+        //beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += frameGivenPos;
         total += frameGivenPos;
+    }
     }
 
     #if TIME
@@ -74,24 +80,27 @@ void ParticleFilter::observe(){
         initializeUniformly();
         for(int i = 0; i < numParticles; i++){
             t = particles[i];
-            beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += 1;
+            probs[i] = 1;
+            //beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += 1;
         }
         total = numParticles;
     }
 
-    int size = (int)beliefs.size();
-    std::vector<double> p;  // stores relative probabilities
-    std::tuple<int,int> *locations = new std::tuple<int,int>[size];
+    //int size = (int)beliefs.size();
+    std::vector<double> p(probs, probs + numParticles);
+    //std::tuple<int,int> *locations = new std::tuple<int,int>[size];
    
     // populate vector with relative probabilities and keep track of particle locations
     int i = 0;
     int count = 0;
-    for(it_type it = beliefs.begin(); it != beliefs.end(); it++) {
-        p.push_back(it->second);                
-        locations[i++] = it->first;
-        beliefs.erase(it->first); //should take care of memory
-        count++;
-    }
+    // for(it_type it = beliefs.begin(); it != beliefs.end(); it++) {
+    //     p.push_back(it->second);                
+    //     locations[i++] = it->first;
+    //     beliefs.erase(it->first); //should take care of memory
+    //     count++;
+    // }
+
+
 
     // discrete distribution object
     trng::discrete_dist dist(p.begin(), p.end());
@@ -99,20 +108,25 @@ void ParticleFilter::observe(){
     trng::yarn5 r;
 
     std::tuple<int, int> newPos;
-    std::tuple<int, int> oldParticle;
+    //std::tuple<int, int> oldParticle;
 
     // resample
     for(int a = 0; a < numParticles; a++){          	
-        newPos = locations[dist(r)];
-    	oldParticle = particles[a];
+        newPos = particles[dist(r)];
+    	//oldParticle = particles[a];
 
     	// positions of newPos, dx = newPos(x) - oldParticle(x), etc.
         particles[a] = std::make_tuple(std::get<0>(newPos), 
                                     std::get<1>(newPos));
     }
 
-    delete[] locations;
+    //delete[] locations;
     p.clear();
+
+    #if TIME
+        gettimeofday(&end1, 0);
+        timer.timetoResample += end1.tv_sec + 1e-6*end1.tv_usec - end.tv_sec - 1e-6*end.tv_usec;
+    #endif
 }      
 
 ParticleFilter::ParticleFilter (int np, double sig, bool verb, ImageHelper& _imageHelper){
@@ -130,11 +144,12 @@ ParticleFilter::ParticleFilter (int np, double sig, bool verb, ImageHelper& _ima
 
     if(verb){std::cout << "Initializing particles..." << std::endl;}
     particles = new std::tuple<int, int>[numParticles];
+    probs = new double[numParticles];
     ParticleFilter::initializeUniformly();
 }
 
 std::tuple<int,int> ParticleFilter::bestGuess(){
-    double x,y;
+    double x=0,y=0;
     for(int i=0; i<numParticles;i++){
         x += std::get<0>(particles[i]);
         y += std::get<1>(particles[i]);
