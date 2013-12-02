@@ -1,9 +1,11 @@
-#include <sys/time.h>  
+#include <sys/time.h>
 #include <stdio.h>
 
-#define TIME false
+#define TIME true
 #define DEBUG false
-#define FPS true
+#define FPS false
+#define USE_SERIAL false
+#define USE_PARALLEL true
 
 struct Timer {
     double start, end;

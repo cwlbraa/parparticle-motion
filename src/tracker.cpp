@@ -8,6 +8,7 @@
 #include <ctime>
 #include <sys/time.h>
 #include <tuple>
+#include <omp.h>
 
 #include "parFilter.h"
 #include "ImageHelper.hpp"
@@ -25,14 +26,103 @@ int numIterations;
 // Arguments for comparing histograms
 int hist_size[] = {32, 30}; // corresponds to {hue_bins, saturation_bins}
 int channels[] = {0, 1};
-float hue_range[] = {0, 256};
-float saturation_range[] = {0, 180};
+float hue_range[] = {0, 180};
+float saturation_range[] = {0, 256};
 const float* ranges[] = {hue_range, saturation_range};
 
 // Arguments for the the particle filter
 bool verbose = false;
 int numParticles = 1000;
 double sigma = 20.0;
+
+void RGB_TO_HSV_PARALLEL(Mat& source, Mat& destination) {
+    destination.create(source.rows, source.cols, CV_8UC3);
+    uint8_t* data = (uint8_t*)source.data;
+    uint8_t* target = (uint8_t*)destination.data;
+
+    /*int I_STEP_SIZE = 104;
+    int J_STEP_SIZE = 104;
+
+    #pragma omp parallel for
+    for (int i_step = 0; i_step < source.rows; i_step += I_STEP_SIZE) {
+        for (int j_step = 0; j_step < source.cols; j_step += J_STEP_SIZE) {
+            for (int i = i_step; i < min(i_step + I_STEP_SIZE, source.rows); i++) {
+                for (int j = j_step; j < min(j_step + J_STEP_SIZE, source.cols); j++) {*/
+    #pragma omp parallel for
+    for (int i = 0; i < source.rows; i++) {
+        for (int j = 0; j < source.cols; j++) {
+                    float b, g, r, h, s, v, min, max;
+
+                    r = data[source.cols * 3 * i + 3 * j] / 255.0f;
+                    g = data[source.cols * 3 * i + 3 * j + 1] / 255.0f;
+                    b = data[source.cols * 3 * i + 3 * j + 2] / 255.0f;
+                    max = std::max(r, std::max(g, b));
+                    min = std::min(r, std::min(g, b));
+                    
+                    v = max;
+
+                    if (v != 0.0f)
+                        s = (v - min) / v;
+                    else
+                        s = 0.0f;
+
+                    if (v == r)
+                        h = 60.0f * (g - b) / (v - min);
+                    else if (v == g)
+                        h = 120.0f + 60.0f * (b - r) / (v - min);
+                    else if (v == b)
+                        h = 240.0f + 60.0f * (r - g) / (v - min);
+
+                    if (h < 0.0f)
+                        h = h + 360.0f;
+
+                    target[destination.cols * 3 * i + 3 * j] = h / 2.0f; // h is actually 0-360, but obviously that doesn't fit in a uchar
+                    target[destination.cols * 3 * i + 3 * j + 1] = s * 255.0f;
+                    target[destination.cols * 3 * i + 3 * j + 2] = v * 255.0f;
+                /*}
+            }*/
+        }
+    }
+}
+
+void RGB_TO_HSV_SERIAL(Mat& source, Mat& destination) {
+    destination.create(source.rows, source.cols, CV_8UC3);
+    uint8_t* data = (uint8_t*)source.data;
+    uint8_t* target = (uint8_t*)destination.data;
+
+    for (int i = 0; i < source.rows; i++) {
+        for (int j = 0; j < source.cols; j++) {
+            float b, g, r, h, s, v, min, max;
+
+            r = data[source.cols * 3 * i + 3 * j] / 255.0f;
+            g = data[source.cols * 3 * i + 3 * j + 1] / 255.0f;
+            b = data[source.cols * 3 * i + 3 * j + 2] / 255.0f;
+            max = std::max(r, std::max(g, b));
+            min = std::min(r, std::min(g, b));
+            
+            v = max;
+
+            if (v != 0.0f)
+                s = (v - min) / v;
+            else
+                s = 0.0f;
+
+            if (v == r)
+                h = 60.0f * (g - b) / (v - min);
+            else if (v == g)
+                h = 120.0f + 60.0f * (b - r) / (v - min);
+            else if (v == b)
+                h = 240.0f + 60.0f * (r - g) / (v - min);
+
+            if (h < 0.0f)
+                h = h + 360.0f;
+
+            target[destination.cols * 3 * i + 3 * j] = h / 2.0f; // h is actually 0-360, but obviously that doesn't fit in a uchar
+            target[destination.cols * 3 * i + 3 * j + 1] = s * 255.0f;
+            target[destination.cols * 3 * i + 3 * j + 2] = v * 255.0f;
+        }
+    }
+}
 
 double bhattacharyya_distance(MatND& src, MatND& ref) {
     return 1.0 - compareHist(src, ref, 3);
@@ -168,9 +258,18 @@ void track_video(string video_location, string reference_location) {
         cout << "Could not load a video" << endl;
     }
 
+    #if USE_SERIAL
+    RGB_TO_HSV_PARALLEL(reference, reference_hsv);
+    #elif USE_PARALLEL
+    RGB_TO_HSV_SERIAL(reference, reference_hsv);
+    #else
     cvtColor(reference, reference_hsv, CV_RGB2HSV);
+    #endif
+
 
     namedWindow("Video Tracker", CV_WINDOW_AUTOSIZE);
+    //imshow("Video Tracker", reference_hsv);
+    //waitKey(0);
 
     #if TIME
         timeval temp, tv;
@@ -279,7 +378,13 @@ void track_video(string video_location, string reference_location) {
             gettimeofday(&temp, 0);
         #endif
 
-		cvtColor(frame, frame_hsv, CV_RGB2HSV);
+        #if USE_PARALLEL
+        RGB_TO_HSV_PARALLEL(frame, frame_hsv);
+        #elif USE_SERIAL
+        RGB_TO_HSV_SERIAL(frame, frame_hsv);
+        #else
+        cvtColor(frame, frame_hsv, CV_RGB2HSV);
+        #endif
 
         #if TIME
             gettimeofday(&tv, 0);
