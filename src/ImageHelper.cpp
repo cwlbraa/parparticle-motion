@@ -71,6 +71,7 @@ void ImageHelper::advance_frame(Mat& _image_hsv) {
 MatND ImageHelper::compute_histogram(Mat& image) {
     MatND histogram;
     calcHist(&image, 1, channels, Mat(), histogram, 2, hist_size, ranges, true, false);
+    normalize(histogram, histogram, 0, 1, NORM_MINMAX, -1, Mat());
     return histogram;
 }
 

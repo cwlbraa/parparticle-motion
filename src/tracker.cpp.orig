@@ -128,6 +128,7 @@ double bhattacharyya_distance(MatND& src, MatND& ref) {
     return 1.0 - compareHist(src, ref, 3);
 }
 
+<<<<<<< HEAD
 void genAndDisplayHeatMap(Mat& source, Mat& reference, Mat& source_hsv, Mat& reference_hsv) {
     int width = source.size().width;
     int height = source.size().height;
@@ -214,7 +215,7 @@ void track_image(std::string source_location, std::string reference_location) {
         }
 
 		//test bestGuess
-		std::tuple<int,int> best = pf.bestGuess();
+		std::tuple<int,int,int,int> best = pf.bestGuess();
 		std::cout << "Best guess: ";
 		std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
 
@@ -232,7 +233,7 @@ void track_image(std::string source_location, std::string reference_location) {
 	
 }
 
-void drawOverlay(Mat& frame, Mat& reference, std::tuple<int, int> bestGuess) {
+void drawOverlay(Mat& frame, Mat& reference, std::tuple<int, int, int, int> bestGuess) {
     int refWidth = reference.size().width;
     int refHeight = reference.size().width;
     Point vertex1 = Point(get<0>(bestGuess) - int(refWidth/2), get<1>(bestGuess) - int(refHeight/2));
@@ -241,6 +242,8 @@ void drawOverlay(Mat& frame, Mat& reference, std::tuple<int, int> bestGuess) {
     rectangle(frame, vertex1, vertex2, Scalar(255, 255, 255), 3, 8, 0);
 }
 
+=======
+>>>>>>> e13282b61ba4ee3b4aead8f31ad9d3a1a1c1d2ff
 // video file: type=1, webcam: type=0
 void track_video(string video_location, string reference_location) {
     Mat frame,
@@ -339,13 +342,14 @@ void track_video(string video_location, string reference_location) {
             gettimeofday(&temp, 0);
         #endif
 
+<<<<<<< HEAD
         tuple<int, int, int, int>* particles = pf.particleList();
         for (int i = 0; i < numParticles; i++) {
             circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 2, Scalar(0, 0, 255), -1, 8);
         }
 
 		//test bestGuess
-		std::tuple<int,int> best = pf.bestGuess();
+		std::tuple<int,int,int,int> best = pf.bestGuess();
 		//std::cout << "Best guess: ";
 		//std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
 
@@ -354,6 +358,15 @@ void track_video(string video_location, string reference_location) {
         
         imshow("Video Tracker", frame);
         waitKey(1);
+=======
+        #if USE_PARALLEL
+        RGB_TO_HSV_PARALLEL(frame, frame_hsv);
+        #elif USE_SERIAL
+        RGB_TO_HSV_SERIAL(frame, frame_hsv);
+        #else
+        cvtColor(frame, frame_hsv, CV_RGB2HSV);
+        #endif
+>>>>>>> e13282b61ba4ee3b4aead8f31ad9d3a1a1c1d2ff
 
         #if TIME
             gettimeofday(&tv, 0);
