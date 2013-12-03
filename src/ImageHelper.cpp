@@ -114,17 +114,26 @@ double ImageHelper::bhatta_distance_parallel(MatND& src, MatND& ref) {
 
     __m128 p1;
     __m128 p2;
+	__m128 p3;
+	__m128 p4;
     __m128 q1;
     __m128 q2;
+	__m128 q3;
+	__m128 q4;
     __m128 tmp;
+	__m128 tmp2;
 
-    int max_sse = src.rows * src.cols - ((src.rows * src.cols) % 8);
+    int max_sse = src.rows * src.cols - ((src.rows * src.cols) % 16);
 
-    for (int i = 0; i < max_sse; i+=8) {
+    for (int i = 0; i < max_sse; i+=16) {
         p1 = _mm_loadu_ps(src_data + i);
         p2 = _mm_loadu_ps(src_data + i + 4);
+		p3 = _mm_loadu_ps(src_data + i + 8);
+        p4 = _mm_loadu_ps(src_data + i + 12);
 
         tmp = _mm_add_ps(p1, p2);
+		tmp2 = _mm_add_ps(p3, p4);
+		tmp = _mm_add_ps(tmp, tmp2);
         tmp = _mm_hadd_ps(tmp, tmp);
         tmp = _mm_hadd_ps(tmp, tmp);
         _mm_storeu_ps(results, tmp);
@@ -132,8 +141,12 @@ double ImageHelper::bhatta_distance_parallel(MatND& src, MatND& ref) {
 
         q1 = _mm_loadu_ps(ref_data + i);
         q2 = _mm_loadu_ps(ref_data + i + 4);
+		q3 = _mm_loadu_ps(src_data + i + 8);
+        q4 = _mm_loadu_ps(src_data + i + 12);
 
         tmp = _mm_add_ps(q1, q2);
+		tmp2 = _mm_add_ps(q3, q4);
+		tmp = _mm_add_ps(tmp, tmp2);
         tmp = _mm_hadd_ps(tmp, tmp);
         tmp = _mm_hadd_ps(tmp, tmp);
         _mm_storeu_ps(results, tmp);
@@ -141,11 +154,17 @@ double ImageHelper::bhatta_distance_parallel(MatND& src, MatND& ref) {
 
         p1 = _mm_mul_ps(p1, q1);
         p2 = _mm_mul_ps(p2, q2);
+		p3 = _mm_mul_ps(p3, q3);
+		p4 = _mm_mul_ps(p4, q4);
 
         p1 = _mm_sqrt_ps(p1);
         p2 = _mm_sqrt_ps(p2);
+		p3 = _mm_sqrt_ps(p3);
+		p4 = _mm_sqrt_ps(p4);
 
         p1 = _mm_add_ps(p1, p2);
+		p3 = _mm_add_ps(p3, p4);
+		p1 = _mm_add_ps(p1, p3);
 
         p1 = _mm_hadd_ps(p1, p1);
         p1 = _mm_hadd_ps(p1, p1);
