@@ -214,7 +214,7 @@ void track_image(std::string source_location, std::string reference_location) {
         }
 
 		//test bestGuess
-		std::tuple<int,int> best = pf.bestGuess();
+		std::tuple<int,int,int,int> best = pf.bestGuess();
 		std::cout << "Best guess: ";
 		std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
 
@@ -232,7 +232,7 @@ void track_image(std::string source_location, std::string reference_location) {
 	
 }
 
-void drawOverlay(Mat& frame, Mat& reference, std::tuple<int, int> bestGuess) {
+void drawOverlay(Mat& frame, Mat& reference, std::tuple<int, int,int,int> bestGuess) {
     int refWidth = reference.size().width;
     int refHeight = reference.size().width;
     Point vertex1 = Point(get<0>(bestGuess) - int(refWidth/2), get<1>(bestGuess) - int(refHeight/2));
@@ -306,27 +306,27 @@ void track_video(string video_location, string reference_location) {
         #if FPS
             numIterations++;
         #endif
-
+ 
         #if TIME
             timeval start, end;
             gettimeofday(&start, 0);
         #endif
-
+ 
         #if TIME
             timer.numIterations += 1;
         #endif
-
+ 
         #if TIME
             gettimeofday(&temp, 0);
         #endif
-
+ 
         video >> frame;
-
+ 
         #if TIME
             gettimeofday(&tv, 0);
             timer.timeToLoadFrame += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
         #endif
-
+ 
         if (frame.empty()) {
             #if FPS
                 gettimeofday(&time_stop, 0);
@@ -334,77 +334,69 @@ void track_video(string video_location, string reference_location) {
             #endif
             break;
         }
-
+ 
         #if TIME
             gettimeofday(&temp, 0);
         #endif
-
-        tuple<int, int, int, int>* particles = pf.particleList();
-        for (int i = 0; i < numParticles; i++) {
-            circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 2, Scalar(0, 0, 255), -1, 8);
-        }
-
-		//test bestGuess
-		std::tuple<int,int> best = pf.bestGuess();
-		//std::cout << "Best guess: ";
-		//std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
-
-		circle(frame, Point(get<0>(best), get<1>(best)), 2, Scalar(0, 255, 0), -1, 8);
-        //drawOverlay(frame, reference, best);
-        
-        imshow("Video Tracker", frame);
-        waitKey(1);
-
+ 
+        #if USE_PARALLEL
+        RGB_TO_HSV_PARALLEL(frame, frame_hsv);
+        #elif USE_SERIAL
+        RGB_TO_HSV_SERIAL(frame, frame_hsv);
+        #else
+        cvtColor(frame, frame_hsv, CV_RGB2HSV);
+        #endif
+ 
         #if TIME
             gettimeofday(&tv, 0);
             timer.timeToConvertColor += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
         #endif
-
+ 
         #if TIME
             gettimeofday(&temp, 0);
         #endif
-
+ 
         pf.parFilterIterate();
-
+ 
         #if TIME
             gettimeofday(&tv, 0);
             timer.timeToPFIterate += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
         #endif
-
+ 
         //gettimeofday(&time_end, 0);
         //timetaken = time_end.tv_sec + 1e-6*time_end.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
         //std::cout << "Time taken for " << numIter << " iterations with ";
         //cout << numParticles << " particles is " << timetaken << "s." << endl;
-
+ 
         #if TIME
             gettimeofday(&temp, 0);
         #endif
-
+ 
         tuple<int, int, int, int>* particles = pf.particleList();
-
+ 
         // Draw the particles
         for (int i = 0; i < numParticles; i++) {
             circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 2, Scalar(0, 0, 255), -1, 8);
         }
-
-		std::tuple<int,int> best = pf.bestGuess();
-
+ 
+        std::tuple<int,int,int,int> best = pf.bestGuess();
+ 
         // Draw the best guess particle
-		circle(frame, Point(get<0>(best), get<1>(best)), 2, Scalar(0, 255, 0), -1, 8);
-
+                circle(frame, Point(get<0>(best), get<1>(best)), 2, Scalar(0, 255, 0), -1, 8);
+ 
         // Draw the rectangle
         Point vertex1 = Point(get<0>(best) - reference.cols / 2, get<1>(best) - reference.rows / 2);
         Point vertex2 = Point(get<0>(best) + reference.cols / 2, get<1>(best) + reference.rows / 2);
         rectangle(frame, vertex1, vertex2, Scalar(0, 255, 0), 1, 8, 0);
-        
+       
         imshow("Video Tracker", frame);
         waitKey(1);
-
+ 
         #if TIME
             gettimeofday(&tv, 0);
             timer.timeToDrawStuff += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
         #endif
-
+ 
         #if TIME
             gettimeofday(&end, 0);
             timer.timePerFrame += end.tv_sec + 1e-6*end.tv_usec - start.tv_sec - 1e-6*start.tv_usec;
