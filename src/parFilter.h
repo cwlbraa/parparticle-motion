@@ -12,21 +12,22 @@ class ParticleFilter {
         bool verbose;
         int width, height, numParticles, numIter;
         double sigma;
-        std::tuple<int, int> *particles;
+        std::tuple<int, int, int, int> *particles;
+        std::tuple<int, int, int, int> *newparticles; //buffer copy for observe step
         double *probs;
         std::tuple<int,int> dims;
         trng::yarn5 r;
 
         void initializeUniformly();
 
-        void telapse(std::tuple<int,int> *oldParticle);
+        void telapse(std::tuple<int,int,int,int> *oldParticle);
 
         void observe();
 
     public:
         ParticleFilter (int np, double sig, bool verb, ImageHelper& imageHelper);
 
-        std::tuple<int,int>* particleList(){ return particles; }
+        std::tuple<int,int,int,int>* particleList(){ return particles; }
 
         std::tuple<int,int> bestGuess();
 

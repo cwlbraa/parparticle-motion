@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <sys/time.h>
 #include <trng/yarn5.hpp>
+#include <trng/uniform_dist.hpp>
 #include <trng/discrete_dist.hpp>
 #include <trng/truncated_normal_dist.hpp>
 #include <getopt.h>
@@ -19,50 +20,55 @@
 
 void ParticleFilter::initializeUniformly(){
     int x,y;
-    srand(time(NULL));
     for (int i = 0; i < numParticles; i++){
-        x = (int) (rand() % width);
-        y = (int) (rand() % height);
-        particles[i] = std::make_tuple(x,y); //initialize velocities to zero
+        trng::uniform_dist<> X(0, width - 1);
+        trng::uniform_dist<> Y(0, width - 1);
+        x = (int) X(r);
+        y = (int) Y(r);
+        particles[i] = std::make_tuple(x,y,0,0); //initialize velocities to zero
     }
 }
 
-void ParticleFilter::telapse(std::tuple<int,int> *oldParticle) {
+void ParticleFilter::telapse(std::tuple<int,int,int,int> *oldParticle) {
     /* given an old particle, the dimensions of the frame, and the std deviation,
-    returns a new particle sampled from a 2D truncated normal distribution. */ 
+     * returns a new particle sampled from a 2D truncated normal distribution. */ 
 
     //init and unpack variables
-    int x, y;
-    std::tie(x, y) = *oldParticle;
+    int x, y, dx, dy, x1, y1;
+    std::tie(x, y, dx, dy) = *oldParticle;
 
-    //init distributions
-    trng::truncated_normal_dist<> X(x, sigma, 0, (float) width - 1);
-    trng::truncated_normal_dist<> Y(y, sigma, 0, (float) height - 1);
+    //init distributions, setting mean to value projected by last velocity
+    //particles in motion tend to stay in motion
+    trng::truncated_normal_dist<> X(max(min(x+dx, width-1), 0), sigma, 0, (float) width - 1);
+    trng::truncated_normal_dist<> Y(max(min(y+dy, height-1), 0), sigma, 0, (float) height - 1);
+
+    //sample next point
+    x1 = (int) X(r); y1 = (int) Y(r);
 
     //replace old particle
-    *oldParticle = std::make_tuple((int) X(r), (int) Y(r));
+    *oldParticle = std::make_tuple(x1, y1, x1-x, y1-y);
 }
 
 void ParticleFilter::observe(){
-	/* Uses edistr matrix to weight particles, then resamples using discrete
-     * distribution according to (#particles * weight). If total weight is
-     * zero, the particles are uniformly distributed */   // stores relative probabilities indexed by particle number
-    //std::map<std::tuple<int, int>, double> beliefs;
-    double frameGivenPos, total = 0;
+	/* computes probability for each particle using basic image processing
+     * and resamples all particles from generated distribution. */
+
     #if TIME
         timeval start, end, end1;
         gettimeofday(&start, 0);
     #endif
 
-    #pragma omp parallel for
+    //generate probability distribution across particles
+    #pragma omp parallel
+    {
+    std::tuple<int,int,int,int> t;
+    #pragma omp for
     for(int i = 0; i < numParticles; i+=125) {
         for (int j = i; j < i + 125; j++) {
-            std::tuple<int,int> t = particles[j];
-            frameGivenPos = imageHelper->similarity(std::get<0>(t), std::get<1>(t));
-            probs[j] = frameGivenPos;
-            //beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += frameGivenPos;
-            total += frameGivenPos;
+            t = particles[j];
+            probs[j] = imageHelper->similarity(std::get<0>(t), std::get<1>(t));
         }
+    }
     }
 
     #if TIME
@@ -70,53 +76,22 @@ void ParticleFilter::observe(){
         timer.timeToComputeDistances += end.tv_sec + 1e-6*end.tv_usec - start.tv_sec - 1e-6*start.tv_usec;
     #endif
 
-    // If all the weights are zero (i.e. no location fulfills evidence)
-    if(total == 0){
-        if(verbose){std::cout << "Reinitializing..." << std::endl;};
-        initializeUniformly();
-        for(int i = 0; i < numParticles; i++){
-            std::tuple<int,int> t = particles[i];
-            probs[i] = 1;
-            //beliefs[std::make_tuple(std::get<0>(t), std::get<1>(t))] += 1;
-        }
-        total = numParticles;
-    }
-
-    //int size = (int)beliefs.size();
+    //convert probability matrix to vector for trng
     std::vector<double> p(probs, probs + numParticles);
-    //std::tuple<int,int> *locations = new std::tuple<int,int>[size];
    
-    // populate vector with relative probabilities and keep track of particle locations
-    int i = 0;
-    int count = 0;
-    // for(it_type it = beliefs.begin(); it != beliefs.end(); it++) {
-    //     p.push_back(it->second);                
-    //     locations[i++] = it->first;
-    //     beliefs.erase(it->first); //should take care of memory
-    //     count++;
-    // }
-
-
-
-    // discrete distribution object
+    // create discrete dist from probability matrix
     trng::discrete_dist dist(p.begin(), p.end());
-    // random generator
-    trng::yarn5 r;
-
-    std::tuple<int, int> newPos;
-    //std::tuple<int, int> oldParticle;
 
     // resample
     for(int a = 0; a < numParticles; a++){          	
-        newPos = particles[dist(r)];
-    	//oldParticle = particles[a];
-
     	// positions of newPos, dx = newPos(x) - oldParticle(x), etc.
-        particles[a] = std::make_tuple(std::get<0>(newPos), 
-                                    std::get<1>(newPos));
+        newparticles[a] = particles[dist(r)];
     }
 
-    //delete[] locations;
+    // swap pointers to particle buffers 
+    // newparticles will now contain oldparticles to be overwritten on next iteration
+    std::swap(particles, newparticles);
+
     p.clear();
 
     #if TIME
@@ -135,11 +110,17 @@ ParticleFilter::ParticleFilter (int np, double sig, bool verb, ImageHelper& _ima
     verbose = verb;
 
     dims = std::make_tuple(width,height);
+
+    //seed trng random generator w/ time
     std::srand(std::time(0));
     r.seed(std::rand());  
 
     if(verb){std::cout << "Initializing particles..." << std::endl;}
-    particles = new std::tuple<int, int>[numParticles];
+
+    // initialize memory for particle filter data
+    particles = new std::tuple<int, int, int, int>[numParticles];
+    // buffer for observation resample step
+    newparticles = new std::tuple<int, int, int, int>[numParticles];
     probs = new double[numParticles];
     ParticleFilter::initializeUniformly();
 }
