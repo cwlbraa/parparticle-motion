@@ -391,7 +391,7 @@ void track_video(string video_location, string reference_location) {
         line(frame, Point(get<0>(best), get<1>(best)), Point(get<0>(best) + 5*get<2>(best), get<1>(best) + 5*get<3>(best)), Scalar(255, 0, 0), 2);
        
         imshow("Video Tracker", frame);
-        waitKey(1);
+        //waitKey(1);
  
         #if TIME
             gettimeofday(&tv, 0);
