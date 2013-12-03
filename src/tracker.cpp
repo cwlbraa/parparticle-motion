@@ -24,7 +24,7 @@ double totalTime;
 int numIterations;
 
 // Arguments for comparing histograms
-int hist_size[] = {64, 60}; // corresponds to {hue_bins, saturation_bins}
+int hist_size[] = {64, 64}; // corresponds to {hue_bins, saturation_bins}
 int channels[] = {0, 1};
 float hue_range[] = {0, 180};
 float saturation_range[] = {0, 256};
@@ -289,6 +289,9 @@ void track_video(string video_location, string reference_location) {
 
     pf.parFilterIterate();
 
+    //imshow("Video Tracker", frame);
+    //waitKey(0);
+
     #if TIME
         timer.numIterations = 0;
         gettimeofday(&tv, 0);
@@ -299,9 +302,6 @@ void track_video(string video_location, string reference_location) {
         gettimeofday(&time_start, 0);
         numIterations = 0;
     #endif
-
-    imshow("Video Tracker", frame);
-    waitKey(0);
 
     while (true) {
         #if FPS
@@ -391,8 +391,8 @@ void track_video(string video_location, string reference_location) {
         rectangle(frame, vertex1, vertex2, Scalar(0, 255, 0), 2, 8, 0);
         line(frame, Point(get<0>(best), get<1>(best)), Point(get<0>(best) + 5*get<2>(best), get<1>(best) + 5*get<3>(best)), Scalar(255, 0, 0), 2);
        
-        imshow("Video Tracker", frame);
-        waitKey(1);
+        //imshow("Video Tracker", frame);
+        //waitKey(1);
  
         #if TIME
             gettimeofday(&tv, 0);
@@ -432,7 +432,7 @@ void track_video(string video_location, string reference_location) {
         cout << "\tAverage time to draw stuff: " << timeToDrawStuff << "s" << endl;
     #endif
 
-    waitKey(0);
+    //waitKey(0);
 
     #if FPS
         cout << "Average FPS: " << numIterations / totalTime << endl;

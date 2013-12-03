@@ -3,6 +3,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <cmath>
+#include "nmmintrin.h"
 
 #include "ImageHelper.hpp"
 #include "tracker.h"
@@ -80,19 +81,21 @@ double ImageHelper::bhattacharyya_distance(MatND& src, MatND& ref) {
 }
 
 double ImageHelper::bhatta_distance_serial(MatND& src, MatND& ref) {
-    uint8_t* src_data = (uint8_t*)src.data;
-    uint8_t* ref_data = (uint8_t*)ref.data;
+    uint32_t* src_data = (uint32_t*)src.data;
+    uint32_t* ref_data = (uint32_t*)ref.data;
 
 
     double bhattacharyya = 0.0;
     double h1 = 0.0;
     double h2 = 0.0;
 
+    //std::cout << src.rows << ", " << src.cols << std::endl;
+
     for (int i = 0; i < src.rows; i++) {
         for (int j = 0; j < src.cols; j++) {
-            h1 += src_data[src.cols * 3 * i + 3 * j];
-            h2 += ref_data[src.cols * 3 * i + 3 * j];
-            bhattacharyya += std::sqrt(src_data[src.cols * 3 * i + 3 * j] * ref_data[src.cols * 3 * i + 3 * j]);
+            h1 += src_data[src.cols * i + j];
+            h2 += ref_data[src.cols * i + j];
+            bhattacharyya += std::sqrt(src_data[src.cols * i + j] * ref_data[src.cols * i + j]);
         }
     }
 
@@ -100,20 +103,63 @@ double ImageHelper::bhatta_distance_serial(MatND& src, MatND& ref) {
 }
 
 double ImageHelper::bhatta_distance_parallel(MatND& src, MatND& ref) {
-    uint8_t* src_data = (uint8_t*)src.data;
-    uint8_t* ref_data = (uint8_t*)ref.data;
+    float* src_data = (float*)src.data;
+    float* ref_data = (float*)ref.data;
 
 
     double bhattacharyya = 0.0;
     double h1 = 0.0;
     double h2 = 0.0;
+    float results[4];
 
-    for (int i = 0; i < src.rows; i++) {
-        for (int j = 0; j < src.cols; j++) {
-            h1 += src_data[src.cols * 3 * i + 3 * j];
-            h2 += ref_data[src.cols * 3 * i + 3 * j];
-            bhattacharyya += std::sqrt(src_data[src.cols * 3 * i + 3 * j] * ref_data[src.cols * 3 * i + 3 * j]);
-        }
+    __m128 p1;
+    __m128 p2;
+    __m128 q1;
+    __m128 q2;
+    __m128 tmp;
+
+    int max_sse = src.rows * src.cols - ((src.rows * src.cols) % 8);
+
+    for (int i = 0; i < max_sse; i+=8) {
+        p1 = _mm_loadu_ps(src_data + i);
+        p2 = _mm_loadu_ps(src_data + i + 4);
+
+        tmp = _mm_add_ps(p1, p2);
+        tmp = _mm_hadd_ps(tmp, tmp);
+        tmp = _mm_hadd_ps(tmp, tmp);
+        _mm_storeu_ps(results, tmp);
+        h1 += results[0];
+
+        q1 = _mm_loadu_ps(ref_data + i);
+        q2 = _mm_loadu_ps(ref_data + i + 4);
+
+        tmp = _mm_add_ps(q1, q2);
+        tmp = _mm_hadd_ps(tmp, tmp);
+        tmp = _mm_hadd_ps(tmp, tmp);
+        _mm_storeu_ps(results, tmp);
+        h2 += results[0];
+
+        p1 = _mm_mul_ps(p1, q1);
+        p2 = _mm_mul_ps(p2, q2);
+
+        p1 = _mm_sqrt_ps(p1);
+        p2 = _mm_sqrt_ps(p2);
+
+        p1 = _mm_add_ps(p1, p2);
+
+        p1 = _mm_hadd_ps(p1, p1);
+        p1 = _mm_hadd_ps(p1, p1);
+
+        _mm_storeu_ps(results, p1);
+        bhattacharyya += results[0];
+    }
+
+    int dim = src.rows * src.cols;
+
+    for (int i = max_sse; i < dim; i++) {
+        h1 += src_data[i];
+        h2 += ref_data[i];
+        bhattacharyya += std::sqrt(src_data[i] * ref_data[i]);
     }
 
     return 1 - std::sqrt(1.0 - 1.0 / std::sqrt(h1 * h2) * bhattacharyya);
