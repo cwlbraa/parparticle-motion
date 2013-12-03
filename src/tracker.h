@@ -1,11 +1,11 @@
 #include <sys/time.h>
 #include <stdio.h>
 
-#define TIME true
+#define TIME false
 #define DEBUG false
 #define FPS false
-#define USE_SERIAL true
-#define USE_PARALLEL false
+#define USE_SERIAL false
+#define USE_PARALLEL true
 // If both USE_SERIAL and USE_PARALLEL are set to false, openCV's methods will be used
 
 struct Timer {

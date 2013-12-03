@@ -268,8 +268,6 @@ void track_video(string video_location, string reference_location) {
 
 
     namedWindow("Video Tracker", CV_WINDOW_AUTOSIZE);
-    //imshow("Video Tracker", reference_hsv);
-    //waitKey(0);
 
     #if TIME
         timeval temp, tv;
@@ -301,6 +299,9 @@ void track_video(string video_location, string reference_location) {
         gettimeofday(&time_start, 0);
         numIterations = 0;
     #endif
+
+    imshow("Video Tracker", frame);
+    waitKey(0);
 
     while (true) {
         #if FPS
@@ -391,7 +392,7 @@ void track_video(string video_location, string reference_location) {
         line(frame, Point(get<0>(best), get<1>(best)), Point(get<0>(best) + 5*get<2>(best), get<1>(best) + 5*get<3>(best)), Scalar(255, 0, 0), 2);
        
         imshow("Video Tracker", frame);
-        //waitKey(1);
+        waitKey(1);
  
         #if TIME
             gettimeofday(&tv, 0);
@@ -430,6 +431,8 @@ void track_video(string video_location, string reference_location) {
         cout << "\t\tAverage time to elapse time: " << timer.timeToElapseTime / timer.numIterations << "s" << endl;
         cout << "\tAverage time to draw stuff: " << timeToDrawStuff << "s" << endl;
     #endif
+
+    waitKey(0);
 
     #if FPS
         cout << "Average FPS: " << numIterations / totalTime << endl;
