@@ -22,7 +22,7 @@ void ParticleFilter::initializeUniformly(){
     int x,y;
     for (int i = 0; i < numParticles; i++){
         trng::uniform_dist<> X(0, width - 1);
-        trng::uniform_dist<> Y(0, width - 1);
+        trng::uniform_dist<> Y(0, height - 1);
         x = (int) X(r);
         y = (int) Y(r);
         particles[i] = std::make_tuple(x,y,0,0); //initialize velocities to zero
@@ -39,14 +39,21 @@ void ParticleFilter::telapse(std::tuple<int,int,int,int> *oldParticle) {
 
     //init distributions, setting mean to value projected by last velocity
     //particles in motion tend to stay in motion
-    trng::truncated_normal_dist<> X(max(min(x+dx, width-1), 0), sigma, 0, (float) width - 1);
-    trng::truncated_normal_dist<> Y(max(min(y+dy, height-1), 0), sigma, 0, (float) height - 1);
+    trng::truncated_normal_dist<> X(x+dx, sigma, (float) std::min(0, x+dx), (float) std::max(width - 1, x+dx));
+    trng::truncated_normal_dist<> Y(y+dy, sigma, (float) std::min(0, y+dy), (float) std::max(height - 1, y+dy));
 
     //sample next point
     x1 = (int) X(r); y1 = (int) Y(r);
 
-    //replace old particle
-    *oldParticle = std::make_tuple(x1, y1, x1-x, y1-y);
+    if (x1 > width || x1 < 0 || y1 > height || y1 < 0) {
+        trng::uniform_dist<> X(0, width - 1);
+        trng::uniform_dist<> Y(0, height - 1);
+        x1 = (int) X(r);
+        y1 = (int) Y(r);
+        *oldParticle = std::make_tuple(x1,y1,0,0);
+    } else {
+        *oldParticle = std::make_tuple(x1, y1, x1-x, y1-y);
+    }
 }
 
 void ParticleFilter::observe(){
