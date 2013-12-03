@@ -80,6 +80,7 @@ void ParticleFilter::observe(){
     {
     probmaxes = new double[omp_get_num_threads()];
     parmaxes = new std::tuple<int,int,int,int>[omp_get_num_threads()];
+	numThreads = omp_get_num_threads();
     }
 
     std::tuple<int,int,int,int> t;
@@ -101,7 +102,7 @@ void ParticleFilter::observe(){
         }
     }
     #if USE_PARALLEL
-    #pragma omp critical
+	#pragma omp critical
     #endif
     {
     double best = 0.0;

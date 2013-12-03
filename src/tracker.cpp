@@ -415,6 +415,11 @@ void track_video(string video_location, string reference_location) {
         double timePerFrame = timeToLoadFrame + timeToConvertColor + timeToPFIterate + timeToDrawStuff;
 
         cout << endl;
+
+		#if USE_PARALLEL
+		cout << "Number of threads: " << pf.numThreads << endl;
+		#endif
+
         cout << "Average time per frame: " << timePerFrame << "s" << endl;
         cout << "\tAverage time to load frame: " << timeToLoadFrame << "s" << endl;
         cout << "\tAverage time to convert color: " << timeToConvertColor << "s" << endl;

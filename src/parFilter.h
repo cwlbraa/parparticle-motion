@@ -28,6 +28,8 @@ class ParticleFilter {
     public:
         ParticleFilter (int np, double sig, bool verb, ImageHelper& imageHelper);
 
+		int numThreads;
+
         std::tuple<int,int,int,int>* particleList(){ return particles; }
 
         std::tuple<int,int,int,int> bestGuess();
