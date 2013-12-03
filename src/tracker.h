@@ -6,6 +6,7 @@
 #define FPS false
 #define USE_SERIAL false
 #define USE_PARALLEL true
+// If both USE_SERIAL and USE_PARALLEL are set to false, openCV's methods will be used
 
 struct Timer {
     double start, end;

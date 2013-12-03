@@ -18,7 +18,7 @@ public:
     int default_radius_x;
     int default_radius_y;
 
-    ImageHelper(Mat _image, Mat _ref, int _hist_size[], const float* _ranges[], int _channels[]);
+    ImageHelper(Mat& _image, Mat& _ref, int _hist_size[], const float* _ranges[], int _channels[]);
 
     //double similarity(int x, int y, int radius_x, int radius_y);
 
@@ -28,11 +28,15 @@ public:
 
     int image_height();
 
-    void advance_frame(Mat _image_hsv);
+    void advance_frame(Mat& _image_hsv);
 
-    MatND compute_histogram(Mat image);
+    MatND compute_histogram(Mat& image);
 
-    double bhattacharyya_distance(MatND src, MatND ref);
+    double bhattacharyya_distance(MatND& src, MatND& ref);
+
+    double bhatta_distance_serial(MatND& src, MatND& ref);
+
+    double bhatta_distance_parallel(MatND& src, MatND& ref);
 };
 
 #endif
