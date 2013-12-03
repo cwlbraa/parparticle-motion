@@ -24,7 +24,7 @@ double totalTime;
 int numIterations;
 
 // Arguments for comparing histograms
-int hist_size[] = {32, 30}; // corresponds to {hue_bins, saturation_bins}
+int hist_size[] = {64, 60}; // corresponds to {hue_bins, saturation_bins}
 int channels[] = {0, 1};
 float hue_range[] = {0, 180};
 float saturation_range[] = {0, 256};
@@ -391,7 +391,7 @@ void track_video(string video_location, string reference_location) {
         line(frame, Point(get<0>(best), get<1>(best)), Point(get<0>(best) + 5*get<2>(best), get<1>(best) + 5*get<3>(best)), Scalar(255, 0, 0), 2);
        
         imshow("Video Tracker", frame);
-        waitKey(0);
+        waitKey(1);
  
         #if TIME
             gettimeofday(&tv, 0);

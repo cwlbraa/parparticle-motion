@@ -57,7 +57,7 @@ void ParticleFilter::telapse(std::tuple<int,int,int,int> *oldParticle) {
 }
 
 void ParticleFilter::observe(){
-	/* computes probability for each particle using basic image processing
+        /* computes probability for each particle using basic image processing
      * and resamples all particles from generated distribution. */
 
     #if TIME
@@ -131,8 +131,8 @@ void ParticleFilter::observe(){
     trng::discrete_dist dist(p.begin(), p.end());
 
     // resample
-    for(int a = 0; a < numParticles; a++){          	
-    	// positions of newPos, dx = newPos(x) - oldParticle(x), etc.
+    for(int a = 0; a < numParticles; a++){                  
+            // positions of newPos, dx = newPos(x) - oldParticle(x), etc.
         newparticles[a] = particles[dist(r)];
     }
 
@@ -278,21 +278,21 @@ double ParticleFilter::histProb(int x, int y) {
             case 'v':
                 verbose = atoi(optarg) == 1;
                 break;
-    	    case 'w':
+                case 'w':
                 width = atoi(optarg);
                 break;
-    	    case 'h':
+                case 'h':
                 height = atoi(optarg);
                 break;
-    	    case 'n':
-        		numParticles = atoi(optarg);
-        		break;
-    	    case 's':
-        		sigma = atoi(optarg);
-        		break;
-    	    case 'i':
-        		numIter = atoi(optarg);
-        		break;
+                case 'n':
+                        numParticles = atoi(optarg);
+                        break;
+                case 's':
+                        sigma = atoi(optarg);
+                        break;
+                case 'i':
+                        numIter = atoi(optarg);
+                        break;
         }
     }
 

@@ -90,9 +90,9 @@ double ImageHelper::bhatta_distance_serial(MatND& src, MatND& ref) {
 
     for (int i = 0; i < src.rows; i++) {
         for (int j = 0; j < src.cols; j++) {
-            h1 += src_data[src.cols * i + j];
-            h2 += ref_data[src.cols * i + j];
-            bhattacharyya += std::sqrt(src_data[src.cols * i + j] * ref_data[src.cols * i + j]);
+            h1 += src_data[src.cols * 3 * i + 3 * j];
+            h2 += ref_data[src.cols * 3 * i + 3 * j];
+            bhattacharyya += std::sqrt(src_data[src.cols * 3 * i + 3 * j] * ref_data[src.cols * 3 * i + 3 * j]);
         }
     }
 
