@@ -128,119 +128,6 @@ double bhattacharyya_distance(MatND& src, MatND& ref) {
     return 1.0 - compareHist(src, ref, 3);
 }
 
-void genAndDisplayHeatMap(Mat& source, Mat& reference, Mat& source_hsv, Mat& reference_hsv) {
-    int width = source.size().width;
-    int height = source.size().height;
-    int refWidth = reference.size().width;
-    int refHeight = reference.size().height;
-    MatND referenceHist;
-    MatND tempHist;
-    Mat heatMat = Mat(height, width, CV_8UC1);
-    
-    calcHist(&reference_hsv, 1, channels, Mat(), referenceHist, 2, hist_size, ranges, true, false);
-    int halfW = refWidth/2;
-    int halfH = refHeight/2;
-    
-    for (int i = 0; i < width; i++) {
-        int colStart, colEnd;
-        colStart = max(i-halfW,0);
-        colEnd = min(i+halfW, width);
-        Range colRange = Range(colStart, colEnd);
-    
-        for (int j = 0; j < height; j++) {
-            int rowStart, rowEnd;
-            double distance;
-            
-            rowStart = max(j-halfH,0);
-            rowEnd = min(j+halfH,height);
-            Range rowRange = Range(rowStart, rowEnd);
-            
-            Mat sourceCompareMat = Mat(source_hsv, rowRange, colRange); 
-            calcHist(&sourceCompareMat, 1, channels, Mat(), tempHist, 2, hist_size, ranges, true, false);
-            distance = bhattacharyya_distance(tempHist, referenceHist);
-            heatMat.at<uchar>(j, i) = static_cast<unsigned char>((distance)*255); 
-        }
-    }
-    Mat heatMat2;
-    
-    //applyColorMap(heatMat, heatMat2, COLORMAP_HOT);
-    imshow("Source", source);
-    imshow("Reference", reference);
-    //imshow('HeatMap', heatMat2);
-    imshow("HeatMap", heatMat);
-    
-    waitKey(0);
-}
-
-void track_image(std::string source_location, std::string reference_location) {
-    Mat source, // This is the image to be analyzed
-        source_hsv, // This is the source in HSV color space
-	reference,
-        reference_hsv; // This is the region in HSV color space
-
-    source = imread(source_location, CV_LOAD_IMAGE_COLOR);
-    reference = imread(reference_location, CV_LOAD_IMAGE_COLOR);
-
-    if (!source.data || !reference.data) {
-        cout << "Could not load an image file" << endl;
-        return;
-    }
-
-    cvtColor(source, source_hsv, CV_RGB2HSV);
-    cvtColor(reference, reference_hsv, CV_RGB2HSV);
-
-    if (DEBUG) {     
-        genAndDisplayHeatMap(source, reference, source_hsv, reference_hsv);
-    }
-    else {
-        ImageHelper imageHelper(source_hsv, reference_hsv, hist_size, ranges, channels);
-        ParticleFilter pf(numParticles, sigma, verbose, imageHelper);
-        pf.printParams();
-
-        //struct timeval time_start, time_end;
-        //double timetaken;
-        //gettimeofday(&time_start, 0); 
-
-        pf.parFilterIterate();
-
-        //gettimeofday(&time_end, 0);
-        //timetaken = time_end.tv_sec + 1e-6*time_end.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
-        //std::cout << "Time taken for " << numIter << " iterations with ";
-        //cout << numParticles << " particles is " << timetaken << "s." << endl;
-
-        tuple<int, int, int, int>* particles = pf.particleList();
-        for (int i = 0; i < numParticles; i++) {
-            circle(source, Point(get<0>(particles[i]), get<1>(particles[i])), 3, Scalar(0, 0, 255), -1, 8);
-        }
-
-		//test bestGuess
-		std::tuple<int,int> best = pf.bestGuess();
-		std::cout << "Best guess: ";
-		std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
-
-		circle(source, Point(get<0>(best), get<1>(best)), 5, Scalar(0, 255, 0), -1, 8);
-
-		namedWindow("Particle Tracker", CV_WINDOW_AUTOSIZE);
-        imshow("Particle Tracker", source);
-
-		waitKey(0);
-
-		pf.destroy();    
-
-	}
-
-	
-}
-
-void drawOverlay(Mat& frame, Mat& reference, std::tuple<int, int> bestGuess) {
-    int refWidth = reference.size().width;
-    int refHeight = reference.size().width;
-    Point vertex1 = Point(get<0>(bestGuess) - int(refWidth/2), get<1>(bestGuess) - int(refHeight/2));
-    Point vertex2 = Point(get<0>(bestGuess) + int(refWidth/2), get<1>(bestGuess) + int(refHeight/2));
-
-    rectangle(frame, vertex1, vertex2, Scalar(255, 255, 255), 3, 8, 0);
-}
-
 // video file: type=1, webcam: type=0
 void track_video(string video_location, string reference_location) {
     Mat frame,
@@ -289,6 +176,8 @@ void track_video(string video_location, string reference_location) {
     ParticleFilter pf(numParticles, sigma, verbose, imageHelper);
     pf.printParams();
 
+    pf.parFilterIterate();
+
     #if TIME
         timer.numIterations = 0;
         gettimeofday(&tv, 0);
@@ -318,55 +207,14 @@ void track_video(string video_location, string reference_location) {
             gettimeofday(&temp, 0);
         #endif
 
-        pf.parFilterIterate();
-
-        #if TIME
-            gettimeofday(&tv, 0);
-            timer.timeToPFIterate += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
-        #endif
-
-        //gettimeofday(&time_end, 0);
-        //timetaken = time_end.tv_sec + 1e-6*time_end.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
-        //std::cout << "Time taken for " << numIter << " iterations with ";
-        //cout << numParticles << " particles is " << timetaken << "s." << endl;
-
-        #if TIME
-            gettimeofday(&temp, 0);
-        #endif
-
-        tuple<int, int, int, int>* particles = pf.particleList();
-        for (int i = 0; i < numParticles; i++) {
-            circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 2, Scalar(0, 0, 255), -1, 8);
-        }
-
-		//test bestGuess
-		std::tuple<int,int> best = pf.bestGuess();
-		//std::cout << "Best guess: ";
-		//std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
-
-		circle(frame, Point(get<0>(best), get<1>(best)), 2, Scalar(0, 255, 0), -1, 8);
-        //drawOverlay(frame, reference, best);
-        
-        imshow("Video Tracker", frame);
-        waitKey(1);
-
-        #if TIME
-            gettimeofday(&tv, 0);
-            timer.timeToDrawStuff += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
-        #endif
-
-        #if TIME
-            gettimeofday(&temp, 0);
-        #endif
-
-		video >> frame;
+        video >> frame;
 
         #if TIME
             gettimeofday(&tv, 0);
             timer.timeToLoadFrame += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
         #endif
 
-		if (frame.empty()) {
+        if (frame.empty()) {
             #if FPS
                 gettimeofday(&time_stop, 0);
                 totalTime = time_stop.tv_sec + 1e-6*time_stop.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
@@ -389,6 +237,51 @@ void track_video(string video_location, string reference_location) {
         #if TIME
             gettimeofday(&tv, 0);
             timer.timeToConvertColor += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
+        #endif
+
+        #if TIME
+            gettimeofday(&temp, 0);
+        #endif
+
+        pf.parFilterIterate();
+
+        #if TIME
+            gettimeofday(&tv, 0);
+            timer.timeToPFIterate += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
+        #endif
+
+        //gettimeofday(&time_end, 0);
+        //timetaken = time_end.tv_sec + 1e-6*time_end.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
+        //std::cout << "Time taken for " << numIter << " iterations with ";
+        //cout << numParticles << " particles is " << timetaken << "s." << endl;
+
+        #if TIME
+            gettimeofday(&temp, 0);
+        #endif
+
+        tuple<int, int, int, int>* particles = pf.particleList();
+
+        // Draw the particles
+        for (int i = 0; i < numParticles; i++) {
+            circle(frame, Point(get<0>(particles[i]), get<1>(particles[i])), 2, Scalar(0, 0, 255), -1, 8);
+        }
+
+		std::tuple<int,int> best = pf.bestGuess();
+
+        // Draw the best guess particle
+		circle(frame, Point(get<0>(best), get<1>(best)), 2, Scalar(0, 255, 0), -1, 8);
+
+        // Draw the rectangle
+        Point vertex1 = Point(get<0>(best) - reference.cols / 2, get<1>(best) - reference.rows / 2);
+        Point vertex2 = Point(get<0>(best) + reference.cols / 2, get<1>(best) + reference.rows / 2);
+        rectangle(frame, vertex1, vertex2, Scalar(0, 255, 0), 1, 8, 0);
+        
+        imshow("Video Tracker", frame);
+        waitKey(1);
+
+        #if TIME
+            gettimeofday(&tv, 0);
+            timer.timeToDrawStuff += tv.tv_sec + 1e-6*tv.tv_usec - temp.tv_sec - 1e-6*temp.tv_usec;
         #endif
 
         #if TIME
@@ -451,3 +344,110 @@ int main(int argc, char* argv[]) {
 	//track_image(source_file, reference_file);
 	track_video(source_file, reference_file);
 }
+
+/* DEPRECATED STUFF
+
+void genAndDisplayHeatMap(Mat& source, Mat& reference, Mat& source_hsv, Mat& reference_hsv) {
+    int width = source.size().width;
+    int height = source.size().height;
+    int refWidth = reference.size().width;
+    int refHeight = reference.size().height;
+    MatND referenceHist;
+    MatND tempHist;
+    Mat heatMat = Mat(height, width, CV_8UC1);
+    
+    calcHist(&reference_hsv, 1, channels, Mat(), referenceHist, 2, hist_size, ranges, true, false);
+    int halfW = refWidth/2;
+    int halfH = refHeight/2;
+    
+    for (int i = 0; i < width; i++) {
+        int colStart, colEnd;
+        colStart = max(i-halfW,0);
+        colEnd = min(i+halfW, width);
+        Range colRange = Range(colStart, colEnd);
+    
+        for (int j = 0; j < height; j++) {
+            int rowStart, rowEnd;
+            double distance;
+            
+            rowStart = max(j-halfH,0);
+            rowEnd = min(j+halfH,height);
+            Range rowRange = Range(rowStart, rowEnd);
+            
+            Mat sourceCompareMat = Mat(source_hsv, rowRange, colRange); 
+            calcHist(&sourceCompareMat, 1, channels, Mat(), tempHist, 2, hist_size, ranges, true, false);
+            distance = bhattacharyya_distance(tempHist, referenceHist);
+            heatMat.at<uchar>(j, i) = static_cast<unsigned char>((distance)*255); 
+        }
+    }
+    Mat heatMat2;
+    
+    //applyColorMap(heatMat, heatMat2, COLORMAP_HOT);
+    imshow("Source", source);
+    imshow("Reference", reference);
+    //imshow('HeatMap', heatMat2);
+    imshow("HeatMap", heatMat);
+    
+    waitKey(0);
+}
+
+void track_image(std::string source_location, std::string reference_location) {
+    Mat source, // This is the image to be analyzed
+        source_hsv, // This is the source in HSV color space
+    reference,
+        reference_hsv; // This is the region in HSV color space
+
+    source = imread(source_location, CV_LOAD_IMAGE_COLOR);
+    reference = imread(reference_location, CV_LOAD_IMAGE_COLOR);
+
+    if (!source.data || !reference.data) {
+        cout << "Could not load an image file" << endl;
+        return;
+    }
+
+    cvtColor(source, source_hsv, CV_RGB2HSV);
+    cvtColor(reference, reference_hsv, CV_RGB2HSV);
+
+    if (DEBUG) {     
+        genAndDisplayHeatMap(source, reference, source_hsv, reference_hsv);
+    }
+    else {
+        ImageHelper imageHelper(source_hsv, reference_hsv, hist_size, ranges, channels);
+        ParticleFilter pf(numParticles, sigma, verbose, imageHelper);
+        pf.printParams();
+
+        //struct timeval time_start, time_end;
+        //double timetaken;
+        //gettimeofday(&time_start, 0); 
+
+        pf.parFilterIterate();
+
+        //gettimeofday(&time_end, 0);
+        //timetaken = time_end.tv_sec + 1e-6*time_end.tv_usec - time_start.tv_sec - 1e-6*time_start.tv_usec;
+        //std::cout << "Time taken for " << numIter << " iterations with ";
+        //cout << numParticles << " particles is " << timetaken << "s." << endl;
+
+        tuple<int, int, int, int>* particles = pf.particleList();
+        for (int i = 0; i < numParticles; i++) {
+            circle(source, Point(get<0>(particles[i]), get<1>(particles[i])), 3, Scalar(0, 0, 255), -1, 8);
+        }
+
+        //test bestGuess
+        std::tuple<int,int> best = pf.bestGuess();
+        std::cout << "Best guess: ";
+        std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
+
+        circle(source, Point(get<0>(best), get<1>(best)), 5, Scalar(0, 255, 0), -1, 8);
+
+        namedWindow("Particle Tracker", CV_WINDOW_AUTOSIZE);
+        imshow("Particle Tracker", source);
+
+        waitKey(0);
+
+        pf.destroy();    
+
+    }
+
+    
+}
+*/
