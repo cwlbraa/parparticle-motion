@@ -387,10 +387,11 @@ void track_video(string video_location, string reference_location) {
         // Draw the rectangle
         Point vertex1 = Point(get<0>(best) - reference.cols / 2, get<1>(best) - reference.rows / 2);
         Point vertex2 = Point(get<0>(best) + reference.cols / 2, get<1>(best) + reference.rows / 2);
-        rectangle(frame, vertex1, vertex2, Scalar(0, 255, 0), 1, 8, 0);
+        rectangle(frame, vertex1, vertex2, Scalar(0, 255, 0), 2, 8, 0);
+        line(frame, Point(get<0>(best), get<1>(best)), Point(get<0>(best) + 5*get<2>(best), get<1>(best) + 5*get<3>(best)), Scalar(255, 0, 0), 2);
        
         imshow("Video Tracker", frame);
-        waitKey(1);
+        waitKey(0);
  
         #if TIME
             gettimeofday(&tv, 0);

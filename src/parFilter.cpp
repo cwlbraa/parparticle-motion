@@ -45,7 +45,7 @@ void ParticleFilter::telapse(std::tuple<int,int,int,int> *oldParticle) {
     //sample next point
     x1 = (int) X(r); y1 = (int) Y(r);
 
-    if (x1 > width || x1 < 0 || y1 > height || y1 < 0) {
+    if (x1 >= width || x1 < 0 || y1 >= height || y1 < 0) {
         trng::uniform_dist<> X(0, width - 1);
         trng::uniform_dist<> Y(0, height - 1);
         x1 = (int) X(r);
@@ -68,10 +68,15 @@ void ParticleFilter::observe(){
     double* probmaxes;
     std::tuple<int,int,int,int>* parmaxes;
     //generate probability distribution across particles
+
+    #if USE_PARALLEL
     #pragma omp parallel
+    #endif
     {
 
+    #if USE_PARALLEL
     #pragma omp critical
+    #endif
     {
     probmaxes = new double[omp_get_num_threads()];
     parmaxes = new std::tuple<int,int,int,int>[omp_get_num_threads()];
@@ -80,7 +85,9 @@ void ParticleFilter::observe(){
     std::tuple<int,int,int,int> t;
     int thrd_num = omp_get_thread_num();
 
+    #if USE_PARALLEL
     #pragma omp for
+    #endif
     for(int i = 0; i < numParticles; i+=125) {
         for (int j = i; j < i + 125; j++) {
             t = particles[j];
@@ -93,7 +100,9 @@ void ParticleFilter::observe(){
             }
         }
     }
+    #if USE_PARALLEL
     #pragma omp critical
+    #endif
     {
     double best = 0.0;
     for (int i=0; i < omp_get_num_threads(); i++) {
@@ -165,14 +174,28 @@ ParticleFilter::ParticleFilter (int np, double sig, bool verb, ImageHelper& _ima
 }
 
 std::tuple<int,int,int,int> ParticleFilter::bestGuess(){
-    // double x=0,y=0;
+    double x=0,y=0,dx=0,dy=0;
+    for(int i=0; i<numParticles;i++){
+        x += std::get<0>(particles[i]);
+        y += std::get<1>(particles[i]);
+        dx += std::get<2>(particles[i]);
+        dy += std::get<3>(particles[i]);
+    }
+    x = x/numParticles;
+    y = y/numParticles;
+    dx = dx/numParticles;
+    dy = dy/numParticles;
+    return std::make_tuple((int)x, (int)y, (int)dx, (int)dy);
+
+    
+    /*// double x=0,y=0;
     // for(int i=0; i<numParticles;i++){
     //     x += std::get<0>(particles[i]);
     //     y += std::get<1>(particles[i]);
     // }
     // x = x/numParticles;
     // y = y/numParticles;
-    return bestGuess1; //std::make_tuple((int)x, (int)y);
+    return bestGuess1; //std::make_tuple((int)x, (int)y);*/
 }
 
 void ParticleFilter::printFirstN(int n) {
