@@ -5,10 +5,11 @@
 #include <cmath>
 
 #include "ImageHelper.hpp"
+#include "tracker.h"
 
 using namespace cv;
 
-ImageHelper::ImageHelper(Mat _image, Mat _ref, int _hist_size[], const float* _ranges[], int _channels[]) {
+ImageHelper::ImageHelper(Mat& _image, Mat& _ref, int _hist_size[], const float* _ranges[], int _channels[]) {
     image = _image;
     hist_size = _hist_size;
     channels = _channels;
@@ -45,7 +46,14 @@ double ImageHelper::similarity(int x, int y) {
     MatND region_hist;
 
     region_hist = compute_histogram(region);
+
+    #if USE_SERIAL
+    return bhatta_distance_serial(region_hist, ref_hist);
+    #elif USE_PARALLEL
+    return bhatta_distance_parallel(region_hist, ref_hist);
+    #else
     return bhattacharyya_distance(region_hist, ref_hist);
+    #endif
 }
 
 int ImageHelper::image_width() {
@@ -56,16 +64,56 @@ int ImageHelper::image_height() {
     return image.rows;
 }
 
-void ImageHelper::advance_frame(Mat _image_hsv) {
+void ImageHelper::advance_frame(Mat& _image_hsv) {
     image = _image_hsv;
 }
 
-MatND ImageHelper::compute_histogram(Mat image) {
+MatND ImageHelper::compute_histogram(Mat& image) {
     MatND histogram;
     calcHist(&image, 1, channels, Mat(), histogram, 2, hist_size, ranges, true, false);
     return histogram;
 }
 
-double ImageHelper::bhattacharyya_distance(MatND src, MatND ref) {
-    return 1 - std::pow(compareHist(src, ref, 3), 0.2);
+double ImageHelper::bhattacharyya_distance(MatND& src, MatND& ref) {
+    return 1.0 - compareHist(src, ref, 3);
+}
+
+double ImageHelper::bhatta_distance_serial(MatND& src, MatND& ref) {
+    uint8_t* src_data = (uint8_t*)src.data;
+    uint8_t* ref_data = (uint8_t*)ref.data;
+
+
+    double bhattacharyya = 0.0;
+    double h1 = 0.0;
+    double h2 = 0.0;
+
+    for (int i = 0; i < src.rows; i++) {
+        for (int j = 0; j < src.cols; j++) {
+            h1 += src_data[src.cols * i + j];
+            h2 += ref_data[src.cols * i + j];
+            bhattacharyya += std::sqrt(src_data[src.cols * i + j] * ref_data[src.cols * i + j]);
+        }
+    }
+
+    return 1 - std::sqrt(1.0 - 1.0 / std::sqrt(h1 * h2) * bhattacharyya);
+}
+
+double ImageHelper::bhatta_distance_parallel(MatND& src, MatND& ref) {
+    uint8_t* src_data = (uint8_t*)src.data;
+    uint8_t* ref_data = (uint8_t*)ref.data;
+
+
+    double bhattacharyya = 0.0;
+    double h1 = 0.0;
+    double h2 = 0.0;
+
+    for (int i = 0; i < src.rows; i++) {
+        for (int j = 0; j < src.cols; j++) {
+            h1 += src_data[src.cols * 3 * i + 3 * j];
+            h2 += ref_data[src.cols * 3 * i + 3 * j];
+            bhattacharyya += std::sqrt(src_data[src.cols * 3 * i + 3 * j] * ref_data[src.cols * 3 * i + 3 * j]);
+        }
+    }
+
+    return 1 - std::sqrt(1.0 - 1.0 / std::sqrt(h1 * h2) * bhattacharyya);
 }
