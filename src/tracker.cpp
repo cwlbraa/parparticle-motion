@@ -214,7 +214,7 @@ void track_image(std::string source_location, std::string reference_location) {
         }
 
 		//test bestGuess
-		std::tuple<int,int> best = pf.bestGuess();
+		std::tuple<int,int,int,int> best = pf.bestGuess();
 		std::cout << "Best guess: ";
 		std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
 
@@ -232,7 +232,7 @@ void track_image(std::string source_location, std::string reference_location) {
 	
 }
 
-void drawOverlay(Mat& frame, Mat& reference, std::tuple<int, int> bestGuess) {
+void drawOverlay(Mat& frame, Mat& reference, std::tuple<int, int, int, int> bestGuess) {
     int refWidth = reference.size().width;
     int refHeight = reference.size().width;
     Point vertex1 = Point(get<0>(bestGuess) - int(refWidth/2), get<1>(bestGuess) - int(refHeight/2));
@@ -340,7 +340,7 @@ void track_video(string video_location, string reference_location) {
         }
 
 		//test bestGuess
-		std::tuple<int,int> best = pf.bestGuess();
+		std::tuple<int,int,int,int> best = pf.bestGuess();
 		//std::cout << "Best guess: ";
 		//std::cout << std::get<0>(best) << " " << std::get<1>(best) << std::endl;
 

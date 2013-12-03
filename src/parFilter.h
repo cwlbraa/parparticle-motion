@@ -16,6 +16,7 @@ class ParticleFilter {
         std::tuple<int, int, int, int> *newparticles; //buffer copy for observe step
         double *probs;
         std::tuple<int,int> dims;
+        std::tuple<int, int, int, int> bestGuess1;
         trng::yarn5 r;
 
         void initializeUniformly();
@@ -29,7 +30,7 @@ class ParticleFilter {
 
         std::tuple<int,int,int,int>* particleList(){ return particles; }
 
-        std::tuple<int,int> bestGuess();
+        std::tuple<int,int,int,int> bestGuess();
 
         void printFirstN(int n);
 

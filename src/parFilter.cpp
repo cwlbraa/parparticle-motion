@@ -58,18 +58,50 @@ void ParticleFilter::observe(){
         gettimeofday(&start, 0);
     #endif
 
+    double* probmaxes;
+    std::tuple<int,int,int,int>* parmaxes;
     //generate probability distribution across particles
     #pragma omp parallel
     {
+
+    #pragma omp critical
+    {
+    probmaxes = new double[omp_get_num_threads()];
+    parmaxes = new std::tuple<int,int,int,int>[omp_get_num_threads()];
+    }
+
     std::tuple<int,int,int,int> t;
+    int thrd_num = omp_get_thread_num();
+
     #pragma omp for
     for(int i = 0; i < numParticles; i+=125) {
         for (int j = i; j < i + 125; j++) {
             t = particles[j];
             probs[j] = imageHelper->similarity(std::get<0>(t), std::get<1>(t));
+
+            //retain max p per thread...
+            if (probmaxes[thrd_num] != max(probmaxes[thrd_num], probs[j])) {
+                probmaxes[thrd_num] = probs[j];
+                parmaxes[thrd_num] = t;
+            }
         }
     }
+    #pragma omp critical
+    {
+    double best = 0.0;
+    for (int i=0; i < omp_get_num_threads(); i++) {
+        if (probmaxes[i] > best) {
+            best = probmaxes[i];
+            bestGuess1 = parmaxes[i];
+        }
     }
+
+    }
+    //end parallel block
+    }
+
+
+
 
     #if TIME
         gettimeofday(&end, 0);
@@ -125,15 +157,15 @@ ParticleFilter::ParticleFilter (int np, double sig, bool verb, ImageHelper& _ima
     ParticleFilter::initializeUniformly();
 }
 
-std::tuple<int,int> ParticleFilter::bestGuess(){
-    double x=0,y=0;
-    for(int i=0; i<numParticles;i++){
-        x += std::get<0>(particles[i]);
-        y += std::get<1>(particles[i]);
-    }
-    x = x/numParticles;
-    y = y/numParticles;
-    return std::make_tuple((int)x, (int)y);
+std::tuple<int,int,int,int> ParticleFilter::bestGuess(){
+    // double x=0,y=0;
+    // for(int i=0; i<numParticles;i++){
+    //     x += std::get<0>(particles[i]);
+    //     y += std::get<1>(particles[i]);
+    // }
+    // x = x/numParticles;
+    // y = y/numParticles;
+    return bestGuess1; //std::make_tuple((int)x, (int)y);
 }
 
 void ParticleFilter::printFirstN(int n) {
