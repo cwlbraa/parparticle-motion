@@ -290,7 +290,7 @@ void track_video(string video_location, string reference_location) {
     pf.parFilterIterate();
 
     imshow("Video Tracker", frame);
-    waitKey(0);
+    //waitKey(0);
 
     #if TIME
         timer.numIterations = 0;

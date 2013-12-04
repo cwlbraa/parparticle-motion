@@ -189,7 +189,7 @@ std::tuple<int,int,int,int> ParticleFilter::bestGuess(){
     return std::make_tuple((int)x, (int)y, (int)dx, (int)dy);
 
     
-    /*// double x=0,y=0;
+    // double x=0,y=0;
     // for(int i=0; i<numParticles;i++){
     //     x += std::get<0>(particles[i]);
     //     y += std::get<1>(particles[i]);

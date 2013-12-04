@@ -1,7 +1,7 @@
 #include <sys/time.h>
 #include <stdio.h>
 
-#define TIME true
+#define TIME false
 #define DEBUG false
 #define FPS false
 #define USE_SERIAL false

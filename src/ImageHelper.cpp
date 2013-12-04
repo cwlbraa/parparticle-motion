@@ -81,8 +81,8 @@ double ImageHelper::bhattacharyya_distance(MatND& src, MatND& ref) {
 }
 
 double ImageHelper::bhatta_distance_serial(MatND& src, MatND& ref) {
-    uint32_t* src_data = (uint32_t*)src.data;
-    uint32_t* ref_data = (uint32_t*)ref.data;
+    float* src_data = (float*)src.data;
+    float* ref_data = (float*)ref.data;
 
 
     double bhattacharyya = 0.0;
@@ -108,8 +108,8 @@ double ImageHelper::bhatta_distance_parallel(MatND& src, MatND& ref) {
 
 
     double bhattacharyya = 0.0;
-    double h1 = 0.0;
-    double h2 = 0.0;
+    double h1 = 0;
+    double h2 = 0;
     float results[4];
 
     __m128 p1;
@@ -126,10 +126,10 @@ double ImageHelper::bhatta_distance_parallel(MatND& src, MatND& ref) {
     int max_sse = src.rows * src.cols - ((src.rows * src.cols) % 16);
 
     for (int i = 0; i < max_sse; i+=16) {
-        p1 = _mm_loadu_ps(src_data + i);
-        p2 = _mm_loadu_ps(src_data + i + 4);
-		p3 = _mm_loadu_ps(src_data + i + 8);
-        p4 = _mm_loadu_ps(src_data + i + 12);
+        p1 = _mm_loadu_ps((src_data + i));
+        p2 = _mm_loadu_ps((src_data + i + 4));
+		p3 = _mm_loadu_ps((src_data + i + 8));
+        p4 = _mm_loadu_ps((src_data + i + 12));
 
         tmp = _mm_add_ps(p1, p2);
 		tmp2 = _mm_add_ps(p3, p4);
@@ -139,10 +139,10 @@ double ImageHelper::bhatta_distance_parallel(MatND& src, MatND& ref) {
         _mm_storeu_ps(results, tmp);
         h1 += results[0];
 
-        q1 = _mm_loadu_ps(ref_data + i);
-        q2 = _mm_loadu_ps(ref_data + i + 4);
-		q3 = _mm_loadu_ps(src_data + i + 8);
-        q4 = _mm_loadu_ps(src_data + i + 12);
+        q1 = _mm_loadu_ps((ref_data + i));
+        q2 = _mm_loadu_ps((ref_data + i + 4));
+		q3 = _mm_loadu_ps((ref_data + i + 8));
+        q4 = _mm_loadu_ps((ref_data + i + 12));
 
         tmp = _mm_add_ps(q1, q2);
 		tmp2 = _mm_add_ps(q3, q4);
